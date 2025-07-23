@@ -41,11 +41,14 @@ export const loginUser = async (req: Request, res: Response) => {
         return res.status(200).json({
             message: "Login successful",
             token,
-            id: user.id,
-            username: user.username,
-            name: user.name || null,
-            email: user.email,
-            role: user.role,
+            user:{
+                    id: user.id,
+                    username: user.username,
+                    name: user.name || null,
+                    email: user.email,
+                    role: user.role,
+            }
+  
         });
         }
         catch (error) {
