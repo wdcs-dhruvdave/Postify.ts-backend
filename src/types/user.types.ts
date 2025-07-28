@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'user';
 
-export interface User {
+export interface PublicUser {
     id: string;
     username: string;
     name: string | null; 

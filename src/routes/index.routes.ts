@@ -1,0 +1,14 @@
+import authRouter from './auth.routes';
+import postRouter from './post.routes';
+import commentRouter from './comment.routes';
+import { Router } from 'express';
+import userRouter from './user.routes';
+
+const indexRouter = Router();
+
+indexRouter.use('/auth', authRouter);
+indexRouter.use('/posts', postRouter);
+indexRouter.use('/comments', commentRouter);
+indexRouter.use('/users', userRouter);
+
+export default indexRouter;
