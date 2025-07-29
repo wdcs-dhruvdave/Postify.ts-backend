@@ -10,12 +10,17 @@ interface AuthRequest extends Request {
 
 export const searchUsers = async (req: AuthRequest, res: Response) => {
   const query = req.query.q as string;
-  const currentUserId = req.user?.id || '';
+  const currentUserId = req.user?.id; 
   entryLogger(`Searching for user with query: "${query}"`);
+
+  if (!currentUserId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
   if (!query) {
     return res.json([]);
   }
+  
   try {
     const users = await UserService.searchUsersInDB(query, currentUserId);
     res.json(users);
@@ -37,11 +42,12 @@ export const getFollowSuggestions = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getUserProfile = async (req: Request, res: Response) => {
+export const getUserProfile = async (req: AuthRequest, res: Response) => {
   const { username } = req.params;
+  const currentUserId = req.user?.id;
   entryLogger(`Fetching profile for user: ${username}`);
   try {
-    const userProfile = await UserService.getUserProfileFromDB(username);
+    const userProfile = await UserService.getUserProfileFromDB(username, currentUserId);
     if (!userProfile) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -64,6 +70,10 @@ export const followUser = async (req: AuthRequest, res: Response) => {
     await UserService.followUserInDB(followerId, followingId);
     res.status(200).json({ message: USER_MESSAGES.FOLLOW_SUCCESS });
   } catch (error: any) {
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'You are already following this user.' });
+    }
+
     errorLogger(error, `User ${followerId} failed to follow user ${followingId}`);
     res.status(500).json({ message: 'Server error during follow.' });
   }
@@ -79,5 +89,17 @@ export const unfollowUser = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     errorLogger(error, `User ${followerId} failed to unfollow user ${followingId}`);
     res.status(500).json({ message: 'Server error during unfollow.' });
+  }
+};
+
+export const getPostsByUsername = async (req: Request, res: Response) => {
+  const { username } = req.params;
+  entryLogger(`Fetching posts for user: ${username}`);
+  try {
+    const posts = await UserService.getPostsByUsernameFromDB(username);
+    res.json(posts);
+  } catch (error: any) {
+    errorLogger(error, `Failed to get posts for user: ${username}`);
+    res.status(500).json({ message: 'Server error fetching user posts.' });
   }
 };

@@ -11,4 +11,6 @@ export interface PublicUser {
     role: UserRole;
     created_at: Date;
     updated_at: Date;
+    is_following?: boolean;
+    is_followed_by?: boolean;
 }
