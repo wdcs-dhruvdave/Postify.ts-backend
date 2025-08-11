@@ -1,10 +1,13 @@
 import { Router } from "express";
-import { createPost,dislikePost,getAllPosts, getCategories, getFeed, likePost, undislikePost, unlikePost } from "../controller/post/post.controller";
+import { createPost,deletePost,dislikePost,getAllPosts, getCategories, getFeed, likePost, undislikePost, unlikePost, updatePost } from "../controller/post/post.controller";
 import { protectMiddleware } from "../middleware/auth.middleware";
 
 const postRouter = Router();
 
 postRouter.post("/", protectMiddleware, createPost);
+
+postRouter.put('/:id', protectMiddleware, updatePost);
+postRouter.delete('/:id', protectMiddleware, deletePost);
 
 postRouter.get("/", getAllPosts);
 postRouter.get("/feed", protectMiddleware, getFeed);

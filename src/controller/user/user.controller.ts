@@ -92,14 +92,85 @@ export const unfollowUser = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getPostsByUsername = async (req: Request, res: Response) => {
+export const getPostsByUsername = async (req: AuthRequest, res: Response) => {
   const { username } = req.params;
+  const currentUserId = req.user?.id; 
+  
   entryLogger(`Fetching posts for user: ${username}`);
   try {
-    const posts = await UserService.getPostsByUsernameFromDB(username);
+    const posts = await UserService.getPostsByUsernameFromDB(username, currentUserId);
     res.json(posts);
   } catch (error: any) {
     errorLogger(error, `Failed to get posts for user: ${username}`);
     res.status(500).json({ message: 'Server error fetching user posts.' });
+  }
+};
+
+export const updateUserProfile = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  entryLogger(`User ${userId} attempting to update profile.`);
+  try {
+    const updatedUser = await UserService.updateUserProfileInDB(userId, req.body);
+    res.status(200).json({ message: 'Profile updated successfully', user: updatedUser });
+  } catch (error: any) {
+    errorLogger(error, `Failed to update profile for user ${userId}`);
+    res.status(500).json({ message: 'Server error during profile update.' });
+  }
+};
+
+export const updatePrivacy = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { is_private } = req.body;
+
+  if (typeof is_private !== 'boolean') {
+    return res.status(400).json({ message: 'Invalid is_private value provided.' });
+  }
+  try {
+    const updatedUser = await UserService.updatePrivacyInDB(userId, is_private);
+    res.status(200).json({ 
+        message: 'Privacy setting updated successfully.',
+        user: updatedUser 
+    });
+  } catch (error: any) {
+    errorLogger(error, `Failed to update privacy for user: ${userId}`);
+    res.status(500).json({ message: 'Server error during privacy update.' });
+  }
+};
+
+export const getFollowers = async (req: AuthRequest, res: Response) => {
+  const { username } = req.params;
+  const currentUserId = req.user?.id;
+  entryLogger(`Fetching followers for user: ${username}`);
+  try {
+    const followers = await UserService.getFollowersFromDB(username, currentUserId);
+    res.json(followers);
+  } catch (error: any) {
+    errorLogger(error, `Failed to get followers for user: ${username}`);
+    res.status(500).json({ message: 'Server error fetching followers.' });
+  }
+};
+
+export const getFollowing = async (req: AuthRequest, res: Response) => {
+  const { username } = req.params;
+  const currentUserId = req.user?.id;
+  entryLogger(`Fetching following list for user: ${username}`);
+  try {
+    const following = await UserService.getFollowingFromDB(username, currentUserId);
+    res.json(following);
+  } catch (error: any) {
+    errorLogger(error, `Failed to get following list for user: ${username}`);
+    res.status(500).json({ message: 'Server error fetching following list.' });
+  }
+};
+
+export const getRandomUsers = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  entryLogger(`Fetching random user suggestions for user: ${userId}`);
+  try {
+    const users = await UserService.getRandomUsersFromDB(userId);
+    res.json(users);
+  } catch (error: any) {
+    errorLogger(error, `Failed to get random users for user: ${userId}`);
+    res.status(500).json({ message: 'Server error fetching suggestions.' });
   }
 };

@@ -5,18 +5,33 @@ import { PublicUser } from '../types/user.types';
 import { RegisterData, LoginData } from '../types/auth.types';
 
 export const registerUserService = async (data: RegisterData): Promise<PublicUser> => {
-    const { username, name, email, password } = data;
+    let { username, name, email, password, avatar_url } = data;
+
+    if (!name) {
+        name = "Anonymous User";
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    if (!avatar_url) {
+
+      avatar_url = `https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg`;
+    }
+
     const newUserQuery = `
-    INSERT INTO users (username, name, email, password)
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, username, name, email, role, created_at;
+    INSERT INTO users (username, name, email, password, avatar_url)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, username, name, email, role, created_at, avatar_url;
     `;
 
-    const result = await db.query(newUserQuery, [username, name || null, email, hashedPassword]);
+    const result = await db.query(newUserQuery, [
+        username, 
+        name || null, 
+        email, 
+        hashedPassword, 
+        avatar_url 
+    ]);
     return result.rows[0];
 };
 

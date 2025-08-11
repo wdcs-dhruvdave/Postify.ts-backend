@@ -3,6 +3,7 @@ export interface RegisterData {
   name?: string | null;
   email: string;
   password: string;
+  avatar_url?: string; 
 }
 
 export interface LoginData {
