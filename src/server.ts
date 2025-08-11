@@ -1,8 +1,19 @@
 import express from 'express'
+import dotenv from 'dotenv';
+import cors from 'cors';
+import indexRouter from './routes/index.routes';
+
+dotenv.config();
+
 
 const app = express()
 const PORT = 4000
 
+app.use(cors())
+app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
+
+app.use('/', indexRouter)
 app.get('/', (req, res) => {
   res.send('Hello from server.ts backend!')
 })
