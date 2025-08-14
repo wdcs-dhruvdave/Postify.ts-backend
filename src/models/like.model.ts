@@ -46,6 +46,7 @@ Like.init({
     sequelize,
     tableName: 'likes',
     timestamps: true,
+    underscored: true,
 });
 
 export default Like;

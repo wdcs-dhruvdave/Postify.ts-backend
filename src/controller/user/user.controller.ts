@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as UserService from '../../services/user.service';
 import { USER_MESSAGES } from '../../constants/user.constant';
 import { entryLogger, errorLogger } from '../../utils/logger';
+import * as PostService from "../../services/post.service";
 
 
 interface AuthRequest extends Request {
@@ -92,13 +93,15 @@ export const unfollowUser = async (req: AuthRequest, res: Response) => {
   }
 };
 
+
+
 export const getPostsByUsername = async (req: AuthRequest, res: Response) => {
   const { username } = req.params;
   const currentUserId = req.user?.id; 
   
   entryLogger(`Fetching posts for user: ${username}`);
   try {
-    const posts = await UserService.getPostsByUsernameFromDB(username, currentUserId);
+    const posts = await PostService.getPostsByUsernameFromDB(username, currentUserId);
     res.json(posts);
   } catch (error: any) {
     errorLogger(error, `Failed to get posts for user: ${username}`);
@@ -142,7 +145,7 @@ export const getFollowers = async (req: AuthRequest, res: Response) => {
   const currentUserId = req.user?.id;
   entryLogger(`Fetching followers for user: ${username}`);
   try {
-    const followers = await UserService.getFollowersFromDB(username, currentUserId);
+    const followers = await UserService.getFollowersFromDB(username);
     res.json(followers);
   } catch (error: any) {
     errorLogger(error, `Failed to get followers for user: ${username}`);
@@ -155,7 +158,7 @@ export const getFollowing = async (req: AuthRequest, res: Response) => {
   const currentUserId = req.user?.id;
   entryLogger(`Fetching following list for user: ${username}`);
   try {
-    const following = await UserService.getFollowingFromDB(username, currentUserId);
+    const following = await UserService.getFollowingFromDB(username);
     res.json(following);
   } catch (error: any) {
     errorLogger(error, `Failed to get following list for user: ${username}`);
@@ -167,7 +170,7 @@ export const getRandomUsers = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   entryLogger(`Fetching random user suggestions for user: ${userId}`);
   try {
-    const users = await UserService.getRandomUsersFromDB(userId);
+    const users = await UserService.getFollowSuggestionsFromDB(userId, 10); 
     res.json(users);
   } catch (error: any) {
     errorLogger(error, `Failed to get random users for user: ${userId}`);

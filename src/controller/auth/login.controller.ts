@@ -14,7 +14,7 @@ export const loginUser = async (req: Request, res: Response) => {
     } catch (error: any) {
         errorLogger(error, 'User Login Failed');
         if (error.message === 'User not found' || error.message === 'Invalid password') {
-            return res.status(401).json({ message: error.message });
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
         return res.status(500).json({ message: 'Server error during login.' });
     }

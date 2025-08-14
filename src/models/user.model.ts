@@ -1,7 +1,8 @@
-import { DataTypes, Model, Optional } from "sequelize";
-import sequelize from "../config/database";
+console.log("--- LOADING THE LATEST USER MODEL FILE ---");
+import { DataTypes, Model, Optional } from 'sequelize';
+import sequelize from '../config/database';
 
-interface UserAttributes {
+export interface UserAttributes {
   id: string;
   username: string;
   name: string | null;
@@ -27,7 +28,6 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public bio!: string | null;
   public role!: 'user' | 'admin';
   public is_private!: boolean;
-
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -79,12 +79,20 @@ User.init(
       allowNull: false,
       defaultValue: false,
     },
+    createdAt: {
+      type: DataTypes.DATE,
+      field: 'created_at', 
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      field: 'updated_at', 
+    },
   },
   {
-    sequelize: sequelize,
+    sequelize,
     tableName: 'users', 
     timestamps: true, 
-  }
+    underscored: true,  }
 );
 
 export default User;

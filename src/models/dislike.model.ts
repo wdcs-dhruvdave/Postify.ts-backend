@@ -43,6 +43,7 @@ Dislike.init({
   sequelize,
   tableName: 'dislikes',
   timestamps: true,
+underscored: true,
 });
 
 export default Dislike;

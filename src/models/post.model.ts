@@ -3,7 +3,7 @@ import sequelize from '../config/database';
 import User from './user.model';
 import Category from './category.model';
 
-interface PostAttributes {
+export interface PostAttributes {
   id: string;
   user_id: string;
   category_id: string;
@@ -71,6 +71,7 @@ Post.init({
   sequelize,
   tableName: 'posts',
   timestamps: true,
+  underscored: true,
 });
 
 export default Post;

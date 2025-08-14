@@ -1,65 +1,59 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { db } from "../config/db";
-import { PublicUser } from '../types/user.types'; 
 import { RegisterData, LoginData } from '../types/auth.types';
+import { UserAttributes } from "../models/user.model";
+import { User } from "../models/index";
 
-export const registerUserService = async (data: RegisterData): Promise<PublicUser> => {
-    let { username, name, email, password, avatar_url } = data;
+const DEFAULT_AVATAR = `https://api.dicebear.com/8.x/initials/svg?seed=default`;
 
-    if (!name) {
-        name = "Anonymous User";
-    }
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is not set in environment variables");
+}
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+export const registerUserService = async (
+  data: RegisterData
+): Promise<Omit<UserAttributes, 'password'>> => {
+  const { username, name, email, password, avatar_url } = data;
 
-    if (!avatar_url) {
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
 
-      avatar_url = `https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg`;
-    }
+  const newUser = await User.create({
+    username,
+    name: name || 'anonymous',
+    email: email.toLowerCase(),
+    password: hashedPassword,
+    avatar_url: avatar_url || `https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg`,
+  });
 
-    const newUserQuery = `
-    INSERT INTO users (username, name, email, password, avatar_url)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING id, username, name, email, role, created_at, avatar_url;
-    `;
-
-    const result = await db.query(newUserQuery, [
-        username, 
-        name || null, 
-        email, 
-        hashedPassword, 
-        avatar_url 
-    ]);
-    return result.rows[0];
+  const { password: _, ...safeUser } = newUser.toJSON();
+  return safeUser;
 };
 
-export const loginUserService = async (data: LoginData): Promise<{ token: string, user: PublicUser }> => {
-    const { email, password } = data;
+export const loginUserService = async (
+  data: LoginData
+): Promise<{ token: string; user: Omit<UserAttributes, 'password'> }> => {
+  const { email, password } = data;
 
-    const userQuery = `SELECT * FROM users WHERE email = $1`;
-    const result = await db.query(userQuery, [email]);
-    const user = result.rows[0];
+  const user = await User.findOne({ where: { email: email.toLowerCase() } });
+  if (!user) {
+    throw new Error("User not found");
+  }
 
-    if (!user) {
-        throw new Error("User not found");
-    }
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    throw new Error("Invalid password");
+  }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password || '');
-    if (!isPasswordValid) {
-        throw new Error("Invalid password");
-    }
+  const payload = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+  };
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
 
-    const payload = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-    };
-    const token = jwt.sign(payload, process.env.JWT_SECRET as string || '', { expiresIn: '1d' });
-    
-    delete user.password;
-
-    return { token, user };
+  const { password: _, ...safeUser } = user.toJSON();
+  return { token, user: safeUser };
 };

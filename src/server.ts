@@ -14,7 +14,7 @@ app.use(cors())
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 
-app.use('/', indexRouter)
+app.use('/api', indexRouter)
 app.get('/', (req, res) => {
   res.send('Hello from server.ts backend!')
 })

@@ -42,6 +42,7 @@ Follow.init({
   sequelize,
   tableName: 'follows',
   timestamps: true,
+  underscored: true,
 });
 
 export default Follow;

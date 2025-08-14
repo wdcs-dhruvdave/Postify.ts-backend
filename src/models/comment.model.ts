@@ -49,6 +49,7 @@ Comment.init({
     sequelize,
     tableName: 'comments',
     timestamps: true,
+    underscored: true,
 });
 
 export default Comment;
