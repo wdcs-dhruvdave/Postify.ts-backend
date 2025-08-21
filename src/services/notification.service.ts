@@ -2,8 +2,8 @@ import Notification from '../models/notification.model';
 import { User } from '../models'; 
 
 export const createNotification = async (
-  recipientId: string, 
-  senderId: string, 
+  recipientId: string | number, 
+  senderId: string | number,  
   type: 'like' | 'dislike' | 'comment' | 'follow', 
   postId?: string
 ) => {

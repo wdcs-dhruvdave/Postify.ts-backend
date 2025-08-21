@@ -3,6 +3,8 @@ import { User, Category, Comment, Dislike, Like, Follow, Post } from "../models"
 import { PostAttributes } from "../models/post.model";
 import sequelize from "../config/database";
 import { Op, Sequelize, Transaction } from "sequelize";
+import { log } from "console";
+import { createNotification } from "./notification.service";
 
 export const createPostInDB = async (userId: string, data: CreatePostData): Promise<PostAttributes> => {
   let { title, content_text, image_url, category_id } = data;
@@ -32,6 +34,7 @@ export const createPostInDB = async (userId: string, data: CreatePostData): Prom
     ],
     attributes: {
       include: [
+        "created_at",
         [sequelize.literal("0"), "likes_count"],
         [sequelize.literal("0"), "dislikes_count"],
         [sequelize.literal("0"), "comments_count"],
@@ -66,8 +69,8 @@ export const getPostsByUsernameFromDB = async (username: string, currentUserId?:
     where: {
       is_published: true,
       [Op.or]: [
-        { '$author.is_private$': false },
-        { '$author.id$': currentUserId },
+        { "$author.is_private$": false },
+        { "$author.id$": safeCurrentUserId },
         Sequelize.literal(`EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${safeCurrentUserId}' AND "follows"."following_id" = "author"."id")`)
       ]
     },
@@ -80,6 +83,7 @@ export const getAllPostsFromDB = async (): Promise<PostType[]> => {
   const posts = await Post.findAll({
     attributes: {
       include: [
+        "created_at",
         [sequelize.fn("COUNT", sequelize.col("likes.id")), "likes_count"],
         [sequelize.fn("COUNT", sequelize.col("dislikes.id")), "dislikes_count"],
         [sequelize.fn("COUNT", sequelize.col("comments.id")), "comments_count"],
@@ -113,6 +117,7 @@ export const getFeedFromDB = async (userId: string): Promise<PostType[]> => {
   const posts = await Post.findAll({
     attributes: {
       include: [
+        "created_at",
         [sequelize.fn("COUNT", sequelize.col("likes.id")), "likes_count"],
         [sequelize.fn("COUNT", sequelize.col("dislikes.id")), "dislikes_count"],
         [sequelize.fn("COUNT", sequelize.col("comments.id")), "comments_count"],
@@ -153,7 +158,7 @@ export const getFeedFromDB = async (userId: string): Promise<PostType[]> => {
     },
     group: ["Post.id", "author.id"],
     order: [["createdAt", "DESC"]],
-  });
+  });  
 
 return posts.map(post => {
         const p = post.toJSON() as any;
@@ -193,6 +198,13 @@ export const likePostInDB = async (userId: string, postId: string): Promise<void
     await Dislike.destroy({ where: { user_id: userId, post_id: postId }, transaction: t });
     await Like.findOrCreate({ where: { user_id: userId, post_id: postId }, transaction: t });
   });
+  const post = await Post.findByPk(postId,{attributes: ['user_id']})
+  if (post) 
+  {
+    await createNotification(post.user_id,userId,'like',postId)
+  }
+  console.log(`Post ${postId} liked by user ${userId}`);
+  
 };
 
 export const unlikePostInDB = async (userId: string, postId: string): Promise<void> => {
@@ -206,6 +218,13 @@ export const dislikePostInDB = async (userId: string, postId: string): Promise<v
     await Like.destroy({ where: { user_id: userId, post_id: postId }, transaction: t });
     await Dislike.findOrCreate({ where: { user_id: userId, post_id: postId }, transaction: t });
   });
+  const post = await Post.findByPk(postId,{attributes: ['user_id']})
+  if (post) 
+  {
+    await createNotification(post.user_id,userId,'dislike',postId)
+  }
+  console.log(`Post ${postId} disliked by user ${userId}`);
+  
 };
 
 export const undislikePostInDB = async (userId: string, postId: string): Promise<void> => {

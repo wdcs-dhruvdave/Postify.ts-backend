@@ -3,6 +3,7 @@ import { PublicUser } from '../types/user.types';
 import { UserAttributes } from '../models/user.model';
 import { Sequelize, Op } from 'sequelize';
 import { PostType } from '../types/post.types';
+import { createNotification } from './notification.service';
 
 export interface UserProfile extends PublicUser {
   followers_count: number;
@@ -110,7 +111,7 @@ export const getFollowSuggestionsFromDB = async (userId: string, limit: number =
         [Sequelize.col('created_at'), 'created_at'], 
         [Sequelize.col('updated_at'), 'updated_at']
     ],
-    order: [Sequelize.fn('RANDOM')],
+    // order: [Sequelize.fn('RANDOM')],
     limit
   });
 
@@ -126,7 +127,7 @@ export const getFollowersFromDB = async (username: string): Promise<PublicUser[]
     include: [{
       model: User,
       as: 'follower',
-      attributes: ['id', 'username', 'name', 'avatar_url', ['createdAt', 'created_at'], ['updatedAt', 'updated_at']]
+      attributes: ['id', 'username', 'name', 'avatar_url', 'createdAt', 'updatedAt']
     }]
   });
 
@@ -142,7 +143,7 @@ export const getFollowingFromDB = async (username: string): Promise<PublicUser[]
     include: [{
       model: User,
       as: 'following',
-      attributes: ['id', 'username', 'name', 'avatar_url', ['createdAt', 'created_at'], ['updatedAt', 'updated_at']]
+      attributes: ['id', 'username', 'name', 'avatar_url', 'createdAt', 'updatedAt']
     }]
   });
 
@@ -172,6 +173,10 @@ export const followUserInDB = async (followerId: number, followingId: number): P
   await Follow.findOrCreate({
     where: { follower_id: followerId, following_id: followingId }
   });
+  await createNotification(followingId, followerId, 'follow');
+
+  console.log(`User ${followerId} followed user ${followingId}`);
+  
 };
 
 export const unfollowUserInDB = async (followerId: number, followingId: number): Promise<void> => {
