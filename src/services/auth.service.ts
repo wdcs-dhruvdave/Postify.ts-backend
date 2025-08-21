@@ -52,7 +52,7 @@ export const loginUserService = async (
     email: user.email,
     role: user.role,
   };
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
+  const token = jwt.sign(payload, JWT_SECRET);
 
   const { password: _, ...safeUser } = user.toJSON();
   return { token, user: safeUser };
