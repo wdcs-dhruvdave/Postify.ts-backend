@@ -1,150 +1,241 @@
-import { db } from "../config/db";
-import { Post, CreatePostData, Category } from "../types/post.types";
+import { PostType, CreatePostData, CategoryType } from "../types/post.types";
+import { User, Category, Comment, Dislike, Like, Follow, Post } from "../models";
+import { PostAttributes } from "../models/post.model";
+import sequelize from "../config/database";
+import { Op, Sequelize, Transaction } from "sequelize";
+import { log } from "console";
+import { createNotification } from "./notification.service";
 
-export const createPostInDB = async (userId: string, data: CreatePostData): Promise<Post> => {
-    let { title, content_text, image_url, category_id } = data;
-    if (!category_id) {
-        const cat = await db.query("SELECT id FROM categories WHERE slug = 'general' LIMIT 1");
-        if (cat.rows.length === 0) throw new Error("Default 'General' category not found.");
-        category_id = cat.rows[0].id;
-    }
-    const result = await db.query('INSERT INTO posts (user_id, category_id, title, content_text, image_url, is_published) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [userId, category_id, title, content_text, image_url, true]);
-    const newPostId = result.rows[0].id;
-    const fullPostResult = await db.query(`SELECT p.*, json_build_object('id', u.id, 'username', u.username, 'name', u.name, 'avatar_url', u.avatar_url) as author, 0 as likes_count, 0 as dislikes_count, 0 as comments_count FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = $1`, [newPostId]);
-    return fullPostResult.rows[0];
-};
+export const createPostInDB = async (userId: string, data: CreatePostData): Promise<PostAttributes> => {
+  let { title, content_text, image_url, category_id } = data;
 
-export const getAllPostsFromDB = async (): Promise<Post[]> => {
-    const query = `
-      SELECT 
-        p.*,
-        json_build_object(
-          'id', u.id,
-          'username', u.username,
-          'name', u.name,
-          'avatar_url', u.avatar_url
-        ) as author,
-        COALESCE(l.likes_count, 0)::int as likes_count,
-        COALESCE(d.dislikes_count, 0)::int as dislikes_count,
-        COALESCE(c.comments_count, 0)::int as comments_count
-      FROM posts p
-      JOIN users u ON p.user_id = u.id
-      LEFT JOIN (SELECT post_id, count(*) as likes_count FROM likes GROUP BY post_id) l ON p.id = l.post_id
-      LEFT JOIN (SELECT post_id, count(*) as dislikes_count FROM dislikes GROUP BY post_id) d ON p.id = d.post_id
-      LEFT JOIN (SELECT post_id, count(*) as comments_count FROM comments GROUP BY post_id) c ON p.id = c.post_id
-      WHERE 
-        p.is_published = true AND
-        -- --- FIX: Only include posts from public profiles ---
-        u.is_private = false
-      ORDER BY p.created_at DESC;
-    `;
-    const { rows } = await db.query(query);
-    return rows;
-};
-export const getFeedFromDB = async (userId: string): Promise<Post[]> => {
-    const query = `
-      SELECT 
-        p.*,
-        json_build_object(
-          'id', u.id,
-          'username', u.username,
-          'name', u.name,
-          'avatar_url', u.avatar_url
-        ) as author,
-        COALESCE(l.likes_count, 0)::int as likes_count,
-        COALESCE(d.dislikes_count, 0)::int as dislikes_count,
-        COALESCE(c.comments_count, 0)::int as comments_count,
-        EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $1) as user_has_liked,
-        EXISTS(SELECT 1 FROM dislikes WHERE post_id = p.id AND user_id = $1) as user_has_disliked
-      FROM posts p
-      JOIN users u ON p.user_id = u.id
-      LEFT JOIN (SELECT post_id, count(*) as likes_count FROM likes GROUP BY post_id) l ON p.id = l.post_id
-      LEFT JOIN (SELECT post_id, count(*) as dislikes_count FROM dislikes GROUP BY post_id) d ON p.id = d.post_id
-      LEFT JOIN (SELECT post_id, count(*) as comments_count FROM comments GROUP BY post_id) c ON p.id = c.post_id
-      WHERE 
-        p.is_published = true AND
-        (
-          -- Condition 1: Show the post if the author's profile is public
-          u.is_private = false OR
-          -- Condition 2: Or, show the post if the author is private BUT the current user follows them
-          (u.is_private = true AND EXISTS (
-            SELECT 1 FROM follows WHERE follower_id = $1 AND following_id = u.id
-          )) OR
-          -- --- FIX: Condition 3: Or, always show the post if the author is the current user ---
-          p.user_id = $1
-        )
-      ORDER BY p.created_at DESC;
-    `;
-    const { rows } = await db.query(query, [userId]);
-    return rows;
-};
-
-export const likePostInDB = async (userId: string, postId: string): Promise<void> => {
-    await db.query('BEGIN');
-    await db.query('DELETE FROM dislikes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
-    await db.query('INSERT INTO likes (user_id, post_id) VALUES ($1, $2)', [userId, postId]);
-    await db.query('COMMIT');
-};
-
-export const unlikePostInDB = async (userId: string, postId: string): Promise<void> => {
-    await db.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
-};
-
-export const dislikePostInDB = async (userId: string, postId: string): Promise<void> => {
-    await db.query('BEGIN');
-    await db.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
-    await db.query('INSERT INTO dislikes (user_id, post_id) VALUES ($1, $2)', [userId, postId]);
-    await db.query('COMMIT');
-};
-
-export const undislikePostInDB = async (userId: string, postId: string): Promise<void> => {
-    await db.query('DELETE FROM dislikes WHERE user_id = $1 AND post_id = $2', [userId, postId]);
-};
-
-export const getCategoriesFromDB = async (): Promise<Category[]> => {
-    const { rows } = await db.query('SELECT id, name FROM categories ORDER BY name');
-    return rows;
-};
-
-export const updatePostInDB = async (postId: string, userId: string, data: Partial<CreatePostData>): Promise<Post> => {
-  const { title, content_text, image_url, category_id } = data;
-
-  const ownerCheck = await db.query('SELECT user_id FROM posts WHERE id = $1 ', [postId]);
-
-  if(ownerCheck.rows.length === 0) {
-    throw new Error('Post not found');
+  if (!category_id) {
+    const generalCategory = await Category.findOne({ where: { slug: "general" } });
+    if (!generalCategory) throw new Error("Default 'General' category not found.");
+    category_id = generalCategory.id;
   }
 
-  if(ownerCheck.rows[0].user_id !== userId) {
-    throw new Error('You are not the owner of this post');
-  }
+  const newPost = await Post.create({
+    title,
+    content_text,
+    image_url,
+    category_id,
+    user_id: userId,
+    is_published: true,
+  });
 
-  const updateQuery = `
-    UPDATE posts 
-    SET 
-      title = COALESCE($1, title), 
-      content_text = COALESCE($2, content_text), 
-      image_url = COALESCE($3, image_url), 
-      category_id = COALESCE($4, category_id),
-      updated_at = NOW()
-    WHERE id = $5 RETURNING *;
-  `;
+  const createdPost = await Post.findByPk(newPost.id, {
+    include: [
+      {
+        model: User,
+        as: "author",
+        attributes: ["id", "username", "name", "avatar_url"],
+      },
+    ],
+    attributes: {
+      include: [
+        "created_at",
+        [sequelize.literal("0"), "likes_count"],
+        [sequelize.literal("0"), "dislikes_count"],
+        [sequelize.literal("0"), "comments_count"],
+      ],
+    },
+  });
 
-const result = await db.query(updateQuery, [title, content_text, image_url, category_id, postId]);
-  return result.rows[0];
+  return createdPost!.toJSON();
+};
+
+export const getPostsByUsernameFromDB = async (username: string, currentUserId?: string): Promise<PostType[]> => {
+  const safeCurrentUserId = currentUserId || null;
+  const posts = await Post.findAll({
+    include: [{
+      model: User,
+      as: 'author',
+      where: { username },
+      attributes: ['id', 'username', 'name', 'avatar_url', 'is_private']
+    }],
+    attributes: {
+      include: [
+        'id', 'title', 'content_text', 'image_url',
+        [Sequelize.col('Post.created_at'), 'created_at'],
+        [Sequelize.col('Post.updated_at'), 'updated_at'],
+        [Sequelize.literal(`(SELECT COUNT(*) FROM likes WHERE "likes"."post_id" = "Post"."id")`), 'likes_count'],
+        [Sequelize.literal(`(SELECT COUNT(*) FROM dislikes WHERE "dislikes"."post_id" = "Post"."id")`), 'dislikes_count'],
+        [Sequelize.literal(`(SELECT COUNT(*) FROM comments WHERE "comments"."post_id" = "Post"."id")`), 'comments_count'],
+        [Sequelize.literal(`EXISTS(SELECT 1 FROM likes WHERE "likes"."post_id" = "Post"."id" AND "likes"."user_id" = '${safeCurrentUserId}')`), 'user_has_liked'],
+        [Sequelize.literal(`EXISTS(SELECT 1 FROM dislikes WHERE "dislikes"."post_id" = "Post"."id" AND "dislikes"."user_id" = '${safeCurrentUserId}')`), 'user_has_disliked']
+      ]
+    },
+    where: {
+      is_published: true,
+      [Op.or]: [
+        { "$author.is_private$": false },
+        { "$author.id$": safeCurrentUserId },
+        Sequelize.literal(`EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${safeCurrentUserId}' AND "follows"."following_id" = "author"."id")`)
+      ]
+    },
+    order: [[Sequelize.col('Post.created_at'), 'DESC']]
+  });
+  return posts.map(p => p.get({ plain: true }) as PostType);
+};
+
+export const getAllPostsFromDB = async (): Promise<PostType[]> => {
+  const posts = await Post.findAll({
+    attributes: {
+      include: [
+        "created_at",
+        [sequelize.fn("COUNT", sequelize.col("likes.id")), "likes_count"],
+        [sequelize.fn("COUNT", sequelize.col("dislikes.id")), "dislikes_count"],
+        [sequelize.fn("COUNT", sequelize.col("comments.id")), "comments_count"],
+      ],
+    },
+    include: [
+      { model: User, as: "author", attributes: ["id", "username", "name", "avatar_url"] },
+      { model: Like, as: "likes", attributes: [] },
+      { model: Dislike, as: "dislikes", attributes: [] },
+      { model: Comment, as: "comments", attributes: [] },
+    ],
+    where: {
+      is_published: true,
+      "$author.is_private$": false,
+    },
+    group: ["Post.id", "author.id"],
+    order: [["createdAt", "DESC"]],
+  });
+
+return posts.map(post => {
+        const p = post.toJSON() as any;
+        return {
+            ...p,
+            likes_count: parseInt(p.likes_count, 10),
+            dislikes_count: parseInt(p.dislikes_count, 10),
+            comments_count: parseInt(p.comments_count, 10),
+        } as PostType;
+    });};
+
+export const getFeedFromDB = async (userId: string): Promise<PostType[]> => {
+  const posts = await Post.findAll({
+    attributes: {
+      include: [
+        "created_at",
+        [sequelize.fn("COUNT", sequelize.col("likes.id")), "likes_count"],
+        [sequelize.fn("COUNT", sequelize.col("dislikes.id")), "dislikes_count"],
+        [sequelize.fn("COUNT", sequelize.col("comments.id")), "comments_count"],
+        [
+          sequelize.literal(
+            `EXISTS(SELECT 1 FROM likes WHERE likes.post_id = "Post".id AND likes.user_id = '${userId}')`
+          ),
+          "user_has_liked",
+        ],
+        [
+          sequelize.literal(
+            `EXISTS(SELECT 1 FROM dislikes WHERE dislikes.post_id = "Post".id AND dislikes.user_id = '${userId}')`
+          ),
+          "user_has_disliked",
+        ],
+      ],
+    },
+    include: [
+      { model: User, as: "author", attributes: ["id", "username", "name", "avatar_url", "is_private"] },
+      { model: Like, as: "likes", attributes: [] },
+      { model: Dislike, as: "dislikes", attributes: [] },
+      { model: Comment, as: "comments", attributes: [] },
+    ],
+    where: {
+      is_published: true,
+      [Op.or]: [
+        { "$author.is_private$": false },
+        { user_id: userId },
+        {
+          [Op.and]: [
+            { "$author.is_private$": true },
+            sequelize.literal(
+              `EXISTS(SELECT 1 FROM follows WHERE follows.follower_id = '${userId}' AND follows.following_id = author.id)`
+            ),
+          ],
+        },
+      ],
+    },
+    group: ["Post.id", "author.id"],
+    order: [["createdAt", "DESC"]],
+  });  
+
+return posts.map(post => {
+        const p = post.toJSON() as any;
+        return {
+            ...p,
+            likes_count: parseInt(p.likes_count, 10),
+            dislikes_count: parseInt(p.dislikes_count, 10),
+            comments_count: parseInt(p.comments_count, 10),
+        } as PostType;
+    });};
+
+export const updatePostInDB = async (
+  postId: string,
+  userId: string,
+  data: Partial<CreatePostData>
+): Promise<PostType> => {
+  const post = await Post.findByPk(postId);
+
+  if (!post) throw new Error("Post not found.");
+  if (post.user_id !== userId) throw new Error("You are not authorized to update this post.");
+
+  const updatedPost = await post.update(data);
+  return updatedPost.toJSON() as PostType;
 };
 
 export const deletePostInDB = async (postId: string, userId: string): Promise<void> => {
+  const post = await Post.findByPk(postId);
 
-    const ownerCheck = await db.query('SELECT user_id FROM posts WHERE id = $1', [postId]);
-  if (ownerCheck.rows.length === 0) {
-    throw new Error("Post not found.");
-  }
-  if (ownerCheck.rows[0].user_id !== userId) {
-    throw new Error("You are not authorized to delete this post.");
-  }
+  if (!post) throw new Error("Post not found.");
+  if (post.user_id !== userId) throw new Error("You are not authorized to delete this post.");
 
-  await db.query('DELETE FROM posts WHERE id = $1', [postId]);
+  await post.destroy();
 };
 
+export const likePostInDB = async (userId: string, postId: string): Promise<void> => {
+  await sequelize.transaction(async (t: Transaction) => {
+    await Dislike.destroy({ where: { user_id: userId, post_id: postId }, transaction: t });
+    await Like.findOrCreate({ where: { user_id: userId, post_id: postId }, transaction: t });
+  });
+  const post = await Post.findByPk(postId,{attributes: ['user_id']})
+  if (post) 
+  {
+    await createNotification(post.user_id,userId,'like',postId)
+  }
+  console.log(`Post ${postId} liked by user ${userId}`);
+  
+};
 
+export const unlikePostInDB = async (userId: string, postId: string): Promise<void> => {
+  await sequelize.transaction(async (t: Transaction) => {
+    await Like.destroy({ where: { user_id: userId, post_id: postId }, transaction: t });
+  });
+};
+
+export const dislikePostInDB = async (userId: string, postId: string): Promise<void> => {
+  await sequelize.transaction(async (t: Transaction) => {
+    await Like.destroy({ where: { user_id: userId, post_id: postId }, transaction: t });
+    await Dislike.findOrCreate({ where: { user_id: userId, post_id: postId }, transaction: t });
+  });
+  const post = await Post.findByPk(postId,{attributes: ['user_id']})
+  if (post) 
+  {
+    await createNotification(post.user_id,userId,'dislike',postId)
+  }
+  console.log(`Post ${postId} disliked by user ${userId}`);
+  
+};
+
+export const undislikePostInDB = async (userId: string, postId: string): Promise<void> => {
+  await sequelize.transaction(async (t: Transaction) => {
+    await Dislike.destroy({ where: { user_id: userId, post_id: postId }, transaction: t });
+  });
+};
+
+export const getCategoriesFromDB = async (): Promise<CategoryType[]> => {
+  const categories = await Category.findAll({
+    order: [["name", "ASC"]],
+  });
+  return categories.map((category) => category.toJSON());
+};

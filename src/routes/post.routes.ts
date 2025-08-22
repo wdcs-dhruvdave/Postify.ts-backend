@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { createPost,deletePost,dislikePost,getAllPosts, getCategories, getFeed, likePost, undislikePost, unlikePost, updatePost } from "../controller/post/post.controller";
-import { protectMiddleware } from "../middleware/auth.middleware";
+import { createPost,deletePost,dislikePost,getAllPosts, getCategories, getFeed, getPostsByUsername, likePost, undislikePost, unlikePost, updatePost } from "../controller/post/post.controller";
+import { identifyUser, protectMiddleware } from "../middleware/auth.middleware";
 
 const postRouter = Router();
 
@@ -19,5 +19,8 @@ postRouter.post('/:id/dislike', protectMiddleware, dislikePost);
 postRouter.delete('/:id/dislike', protectMiddleware, undislikePost);
 
 postRouter.get('/categories',protectMiddleware, getCategories);
+
+postRouter.get('/:username/posts', identifyUser, getPostsByUsername);
+
 
 export default postRouter;

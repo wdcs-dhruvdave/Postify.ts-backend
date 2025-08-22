@@ -1,8 +1,7 @@
 import { Request,Response } from "express";
-import bcrypt from "bcryptjs";
-import {db} from "../../config/db"
 import { errorLogger,entryLogger } from "../../utils/logger";
 import { registerUserService } from "../../services/auth.service";
+import { UniqueConstraintError } from "sequelize";
 
 
 export const registerUser = async (req: Request, res: Response) => {
@@ -15,15 +14,16 @@ export const registerUser = async (req: Request, res: Response) => {
         });
     } catch (error: any) {
         errorLogger(error, 'User Registration Failed');
-        if (error.code === '23505') {
-            const detail = error.detail || '';
-            if (detail.includes('email')) {
+        
+        if (error instanceof UniqueConstraintError) {
+            if (error.errors[0].path === 'email') {
                 return res.status(409).json({ message: 'Email already exists.' });
             }
-            if (detail.includes('username')) {
+            if (error.errors[0].path === 'username') {
                 return res.status(409).json({ message: 'Username already exists.' });
             }
         }
+        
         return res.status(500).json({ message: 'Server error during registration.' });
     }
 };

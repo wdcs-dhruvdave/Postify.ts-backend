@@ -3,7 +3,7 @@ import * as PostService from '../../services/post.service';
 import { entryLogger, errorLogger } from "../../utils/logger";
 
 interface AuthRequest extends Request {
-  user?: { id: string };
+  user?: { id: string; role: string };
 }
 
 export const createPost = async (req: AuthRequest, res: Response) => {
@@ -43,6 +43,55 @@ export const getFeed = async (req: AuthRequest, res: Response) => {
         errorLogger(error, `Failed to fetch feed for user ${userId}`);
         res.status(500).json({ message: "Server error fetching feed" });
     }
+};
+
+export const getPostsByUsername = async (req: AuthRequest, res: Response) => {
+  const { username } = req.params;
+  const currentUserId = req.user?.id; 
+  
+  entryLogger(`Fetching posts for user: ${username}`);
+  try {
+    const posts = await PostService.getPostsByUsernameFromDB(username, currentUserId);
+    res.json(posts);
+  } catch (error: any) {
+    errorLogger(error, `Failed to get posts for user: ${username}`);
+    res.status(500).json({ message: 'Server error fetching user posts.' });
+  }
+};
+
+export const updatePost = async (req: AuthRequest, res: Response) =>{
+  const userId = req.user!.id;
+  const postId = req.params.id;
+
+  entryLogger(`User ${userId} attempting to update post ${postId}`);
+
+  try {
+    const updatedPost = await PostService.updatePostInDB(postId, userId, req.body);
+    res.status(200).json({ message: 'Post updated successfully', post: updatedPost });
+  } catch (error: any) {
+    errorLogger(error, `Failed to update post ${postId}`);
+    if (error.message.includes('not authorized')) {
+        return res.status(403).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message || 'Server error during post update.' });
+  }
+}
+
+export const deletePost = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  const postId = req.params.id;
+  entryLogger(`User ${userId} attempting to delete post ${postId}`);
+
+  try {
+    await PostService.deletePostInDB(postId, userId);
+    res.status(200).json({ message: 'Post deleted successfully' });
+  } catch (error: any) {
+    errorLogger(error, `Failed to delete post ${postId}`);
+    if (error.message.includes('not authorized')) {
+        return res.status(403).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message || 'Server error during post deletion.' });
+  }
 };
 
 export const likePost = async (req: AuthRequest, res: Response) => {
@@ -110,38 +159,4 @@ export const getCategories = async (req: Request, res: Response) => {
         errorLogger(error, 'Failed to fetch categories');
         res.status(500).json({ message: "Server error fetching categories" });
     }
-};
-
-export const updatePost = async (req: AuthRequest, res: Response) =>{
-  const userId = req.user!.id;
-  const postId = req.params.id;
-
-  entryLogger(`User ${userId} attempting to update post ${postId}`);
-
-  try {
-    const updatedPost = await PostService.updatePostInDB(postId, userId, req.body);
-    res.status(200).json({ message: 'Post updated successfully', post: updatedPost });
-  } catch (error: any) {
-    if (error.message.includes('not authorized')) {
-        return res.status(403).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message || 'Server error during post update.' });
-  }
-}
-
-export const deletePost = async (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
-  const postId = req.params.id;
-  entryLogger(`User ${userId} attempting to delete post ${postId}`);
-
-  try {
-    await PostService.deletePostInDB(postId, userId);
-    res.status(200).json({ message: 'Post deleted successfully' });
-  } catch (error: any) {
-    errorLogger(error, `Failed to delete post ${postId}`);
-    if (error.message.includes('not authorized')) {
-        return res.status(403).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message || 'Server error during post deletion.' });
-  }
 };

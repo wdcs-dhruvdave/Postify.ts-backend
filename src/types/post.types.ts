@@ -1,6 +1,6 @@
 import { PublicUser } from './user.types';
 
-export interface Post {
+export interface PostType {
   id: string;
   user_id: string;
   category_id: string;
@@ -25,7 +25,7 @@ export interface CreatePostData {
   category_id?: string;
 }
 
-export interface Category {
+export interface CategoryType {
   id: string;
   name: string;
 }
