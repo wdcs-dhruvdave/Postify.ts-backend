@@ -4,7 +4,6 @@ import { USER_MESSAGES } from '../../constants/user.constant';
 import { entryLogger, errorLogger } from '../../utils/logger';
 import * as PostService from "../../services/post.service";
 
-
 interface AuthRequest extends Request {
   user?: { id: string; role: string };
 }
