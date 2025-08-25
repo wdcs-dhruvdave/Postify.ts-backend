@@ -20,25 +20,30 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 };
 
 export const getAllPosts = async (req: Request, res: Response) => {
-    entryLogger('Fetching all public posts.');
+    entryLogger("Fetching all public posts");
     try {
-        const posts = await PostService.getAllPostsFromDB();
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
+        const posts = await PostService.getAllPostsFromDB(page, limit);
         res.setHeader('Cache-Control', 'no-store');
-        return res.status(200).json({ message: "Posts retrieved successfully", posts });
+        res.json(posts);
     } catch (error: any) {
-        errorLogger(error, 'Failed to retrieve posts');
-        return res.status(500).json({ message: "Server error during post retrieval." });
+        errorLogger(error, "Failed to fetch all posts");
+        res.status(500).json({ message: "Server error fetching posts" });
     }
 };
 
 export const getFeed = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
-    entryLogger(`User ${userId} fetching feed.`);
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+
+    entryLogger(`User ${userId} fetching feed page ${page} with limit ${limit}.`);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     try {
-        const posts = await PostService.getFeedFromDB(userId);
+        const feedData = await PostService.getFeedFromDB(userId, page, limit);
         res.setHeader('Cache-Control', 'no-store');
-        res.json(posts);
+        res.json(feedData);
     } catch (error: any) {
         errorLogger(error, `Failed to fetch feed for user ${userId}`);
         res.status(500).json({ message: "Server error fetching feed" });

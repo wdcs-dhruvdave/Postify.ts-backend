@@ -20,7 +20,12 @@ const io = new Server(server, {
 
 const PORT = 4000;
 
-app.use(cors());
+app.use(cors({
+  origin: ["http://localhost:3000", "https://your-frontend-domain.com"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: true, 
+}));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 

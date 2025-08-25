@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { getCommentsforPost,createComment } from "../controller/comment/comment.controller";
+import { getCommentsForPost, createComment } from "../controller/comment/comment.controller";
 import { protectMiddleware } from "../middleware/auth.middleware";
 
-const commentrouter = Router();
+const commentrouter = Router({ mergeParams: true });
 
-commentrouter.get("/:id",getCommentsforPost);
-commentrouter.post("/:id",protectMiddleware,createComment);
+commentrouter.get("/", getCommentsForPost);
+commentrouter.post("/", protectMiddleware, createComment);
 
 export default commentrouter;

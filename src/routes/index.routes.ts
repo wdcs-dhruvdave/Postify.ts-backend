@@ -9,7 +9,7 @@ const indexRouter = Router();
 
 indexRouter.use('/auth', authRouter);
 indexRouter.use('/posts', postRouter);
-indexRouter.use('/comments', commentRouter);
+indexRouter.use('/posts/:postId/comments', commentRouter);
 indexRouter.use('/users', userRouter);
 indexRouter.use('/notifications', notificationRouter);
 

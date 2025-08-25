@@ -39,64 +39,73 @@ export const searchUsersInDB = async (query: string, currentUserId: string): Pro
 };
 
 export const getUserProfileFromDB = async (username: string, currentUserId?: string): Promise<UserProfile | null> => {
+    const isFollowingLiteral = currentUserId
+      ? `EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${currentUserId}' AND "follows"."following_id" = "User"."id")`
+      : `false`;
+
     const user = await User.findOne({
         where: { username },
-        attributes: {
-            include: [
-                'id', 'username', 'name', 'avatar_url', 'bio', 'is_private',
-                [Sequelize.col('created_at'), 'created_at'],
-                [Sequelize.col('updated_at'), 'updated_at'],
-                [Sequelize.literal(`(SELECT COUNT(*) FROM follows WHERE "follows"."following_id" = "User"."id")`), 'followers_count'],
-                [Sequelize.literal(`(SELECT COUNT(*) FROM follows WHERE "follows"."follower_id" = "User"."id")`), 'following_count'],
-                [Sequelize.literal(`EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${currentUserId || null}' AND "follows"."following_id" = "User"."id")`), 'is_following']
-            ]
-        },
-        group: ['User.id']
+        attributes: [
+            'id', 'username', 'name', 'avatar_url', 'bio', 'is_private', 'created_at', 'updated_at',
+            [Sequelize.literal(`(SELECT COUNT(*) FROM follows WHERE "follows"."following_id" = "User"."id")`), 'followers_count'],
+            [Sequelize.literal(`(SELECT COUNT(*) FROM follows WHERE "follows"."follower_id" = "User"."id")`), 'following_count'],
+            [Sequelize.literal(isFollowingLiteral), 'is_following']
+        ]
     });
 
     if (!user) return null;
     
     const userJson = user.get({ plain: true }) as any;
-    userJson.followers_count = parseInt(userJson.followers_count, 10);
-    userJson.following_count = parseInt(userJson.following_count, 10);
+    userJson.followers_count = parseInt(userJson.followers_count, 10) || 0;
+    userJson.following_count = parseInt(userJson.following_count, 10) || 0;
     
     return userJson as UserProfile;
 };
 
 export const getPostsByUsernameFromDB = async (username: string, currentUserId?: string): Promise<PostType[]> => {
-  const safeCurrentUserId = currentUserId || null;
+  const user = await User.findOne({ where: { username } });
+  if (!user) return [];
+
+  if (user.is_private && user.id !== currentUserId) {
+      if (!currentUserId) return []; // Not logged in, can't see private posts.
+      const isFollowing = await Follow.findOne({ where: { follower_id: currentUserId, following_id: user.id } });
+      if (!isFollowing) return [];
+  }
+
   const posts = await Post.findAll({
+    where: { user_id: user.id, is_published: true },
     include: [{
       model: User,
       as: 'author',
-      where: { username },
-      attributes: ['id', 'username', 'name', 'avatar_url'] 
+      attributes: ['id', 'username', 'name', 'avatar_url', 'is_private'],
     }],
     attributes: {
       include: [
-        'id', 'title', 'content_text', 'image_url',
-        [Sequelize.col('Post.created_at'), 'created_at'],
-        [Sequelize.col('Post.updated_at'), 'updated_at'],
-        [Sequelize.literal(`(SELECT COUNT(*) FROM likes WHERE "likes"."post_id" = "Post"."id")`), 'likes_count'],
-        [Sequelize.literal(`(SELECT COUNT(*) FROM dislikes WHERE "dislikes"."post_id" = "Post"."id")`), 'dislikes_count'],
-        [Sequelize.literal(`(SELECT COUNT(*) FROM comments WHERE "comments"."post_id" = "Post"."id")`), 'comments_count'],
-        [Sequelize.literal(`EXISTS(SELECT 1 FROM likes WHERE "likes"."post_id" = "Post"."id" AND "likes"."user_id" = '${safeCurrentUserId}')`), 'user_has_liked'],
-        [Sequelize.literal(`EXISTS(SELECT 1 FROM dislikes WHERE "dislikes"."post_id" = "Post"."id" AND "dislikes"."user_id" = '${safeCurrentUserId}')`), 'user_has_disliked']
+        'id', 'title', 'content_text', 'image_url', 'created_at',
+        [Sequelize.literal(`(SELECT COUNT(DISTINCT id) FROM likes WHERE likes.post_id = "Post".id)`), 'likes_count'],
+        [Sequelize.literal(`(SELECT COUNT(DISTINCT id) FROM dislikes WHERE dislikes.post_id = "Post".id)`), 'dislikes_count'],
+        [Sequelize.literal(`(SELECT COUNT(DISTINCT id) FROM comments WHERE comments.post_id = "Post".id)`), 'comments_count'],
+        currentUserId ? [Sequelize.literal(`EXISTS(SELECT 1 FROM likes WHERE likes.post_id = "Post".id AND likes.user_id = '${currentUserId}')`), 'user_has_liked'] : [Sequelize.literal('false'), 'user_has_liked'],
+        currentUserId ? [Sequelize.literal(`EXISTS(SELECT 1 FROM dislikes WHERE dislikes.post_id = "Post".id AND dislikes.user_id = '${currentUserId}')`), 'user_has_disliked'] : [Sequelize.literal('false'), 'user_has_disliked'],
       ]
     },
-    where: {
-      is_published: true,
-      [Op.or]: [
-        { '$author.is_private$': false },
-        { '$author.id$': currentUserId },
-        Sequelize.literal(`EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${safeCurrentUserId}' AND "follows"."following_id" = "author"."id")`)
-      ]
-    },
-    order: [[Sequelize.col('Post.created_at'), 'DESC']]
+    group: ['Post.id', 'author.id'],
+    order: [['created_at', 'DESC']],
+    subQuery: false
   });
-  return posts.map(p => p.get({ plain: true }) as PostType);
-};
 
+  return posts.map(post => {
+    const p = post.toJSON() as any;
+    return {
+      ...p,
+      likes_count: parseInt(p.likes_count, 10) || 0,
+      dislikes_count: parseInt(p.dislikes_count, 10) || 0,
+      comments_count: parseInt(p.comments_count, 10) || 0,
+      user_has_liked: p.user_has_liked,
+      user_has_disliked: p.user_has_disliked,
+    } as PostType;
+  });
+};
 
 export const getFollowSuggestionsFromDB = async (userId: string, limit: number = 5): Promise<PublicUser[]> => {
   const suggestions = await User.findAll({
@@ -150,7 +159,7 @@ export const getFollowingFromDB = async (username: string): Promise<PublicUser[]
   return following.map(f => (f as any).following.toJSON() as PublicUser);
 };
 
-export const updateUserProfileInDB = async (userId: number, data: { name?: string; bio?: string; avatar_url?: string }): Promise<Omit<UserAttributes, 'password'>> => {
+export const updateUserProfileInDB = async (userId: string, data: Partial<UserAttributes>): Promise<Omit<UserAttributes, 'password'>> => {
   const user = await User.findByPk(userId);
   if (!user) throw new Error('User not found');
 

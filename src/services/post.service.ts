@@ -79,15 +79,13 @@ export const getPostsByUsernameFromDB = async (username: string, currentUserId?:
   return posts.map(p => p.get({ plain: true }) as PostType);
 };
 
-export const getAllPostsFromDB = async (): Promise<PostType[]> => {
-  const posts = await Post.findAll({
-    attributes: {
-      include: [
-        "created_at",
-        [sequelize.fn("COUNT", sequelize.col("likes.id")), "likes_count"],
-        [sequelize.fn("COUNT", sequelize.col("dislikes.id")), "dislikes_count"],
-        [sequelize.fn("COUNT", sequelize.col("comments.id")), "comments_count"],
-      ],
+export const getAllPostsFromDB = async (page = 1, limit = 10) => {
+  const offset = (page - 1) * limit;
+
+  const { count, rows: posts } = await Post.findAndCountAll({
+    where: {
+      is_published: true,
+      "$author.is_private$": false,
     },
     include: [
       { model: User, as: "author", attributes: ["id", "username", "name", "avatar_url"] },
@@ -95,32 +93,63 @@ export const getAllPostsFromDB = async (): Promise<PostType[]> => {
       { model: Dislike, as: "dislikes", attributes: [] },
       { model: Comment, as: "comments", attributes: [] },
     ],
-    where: {
-      is_published: true,
-      "$author.is_private$": false,
-    },
-    group: ["Post.id", "author.id"],
-    order: [["createdAt", "DESC"]],
-  });
-
-return posts.map(post => {
-        const p = post.toJSON() as any;
-        return {
-            ...p,
-            likes_count: parseInt(p.likes_count, 10),
-            dislikes_count: parseInt(p.dislikes_count, 10),
-            comments_count: parseInt(p.comments_count, 10),
-        } as PostType;
-    });};
-
-export const getFeedFromDB = async (userId: string): Promise<PostType[]> => {
-  const posts = await Post.findAll({
     attributes: {
       include: [
         "created_at",
-        [sequelize.fn("COUNT", sequelize.col("likes.id")), "likes_count"],
-        [sequelize.fn("COUNT", sequelize.col("dislikes.id")), "dislikes_count"],
-        [sequelize.fn("COUNT", sequelize.col("comments.id")), "comments_count"],
+        [sequelize.fn("COUNT", sequelize.fn("DISTINCT", sequelize.col("likes.id"))), "likes_count"],
+        [sequelize.fn("COUNT", sequelize.fn("DISTINCT", sequelize.col("dislikes.id"))), "dislikes_count"],
+        [sequelize.fn("COUNT", sequelize.fn("DISTINCT", sequelize.col("comments.id"))), "comments_count"],
+      ],
+    },
+    group: ["Post.id", "author.id"],
+    order: [["createdAt", "DESC"]],
+    limit,
+    offset,
+    subQuery: false,
+  });
+
+  const totalPosts = count.length;
+  const totalPages = Math.ceil(totalPosts / limit);
+  const hasNextPage = page < totalPages;
+
+  const formattedPosts = posts.map((post) => {
+    const p = post.toJSON() as any;
+    return {
+      ...p,
+      likes_count: parseInt(p.likes_count, 10) || 0,
+      dislikes_count: parseInt(p.dislikes_count, 10) || 0,
+      comments_count: parseInt(p.comments_count, 10) || 0,
+    } as PostType;
+  });
+
+  return {
+    posts: formattedPosts,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      hasNextPage,
+      totalPosts,
+    },
+  };
+};
+
+export const getFeedFromDB = async (
+  userId: string,
+  page = 1,
+  limit: number = 10
+) => {
+  const offset = (page - 1) * limit;
+
+  const { count, rows: posts } = await Post.findAndCountAll({
+    attributes: {
+      include: [
+        "created_at",
+        [sequelize.fn("COUNT", sequelize.fn("DISTINCT", sequelize.col("likes.id"))), "likes_count"],
+        [
+          sequelize.fn("COUNT", sequelize.fn("DISTINCT", sequelize.col("dislikes.id"))),
+          "dislikes_count",
+        ],
+        [sequelize.fn("COUNT", sequelize.fn("DISTINCT", sequelize.col("comments.id"))), "comments_count"],
         [
           sequelize.literal(
             `EXISTS(SELECT 1 FROM likes WHERE likes.post_id = "Post".id AND likes.user_id = '${userId}')`
@@ -136,7 +165,11 @@ export const getFeedFromDB = async (userId: string): Promise<PostType[]> => {
       ],
     },
     include: [
-      { model: User, as: "author", attributes: ["id", "username", "name", "avatar_url", "is_private"] },
+      {
+        model: User,
+        as: "author",
+        attributes: ["id", "username", "name", "avatar_url", "is_private"],
+      },
       { model: Like, as: "likes", attributes: [] },
       { model: Dislike, as: "dislikes", attributes: [] },
       { model: Comment, as: "comments", attributes: [] },
@@ -158,17 +191,35 @@ export const getFeedFromDB = async (userId: string): Promise<PostType[]> => {
     },
     group: ["Post.id", "author.id"],
     order: [["createdAt", "DESC"]],
-  });  
+    limit,
+    offset,
+    subQuery: false,
+  });
 
-return posts.map(post => {
-        const p = post.toJSON() as any;
-        return {
-            ...p,
-            likes_count: parseInt(p.likes_count, 10),
-            dislikes_count: parseInt(p.dislikes_count, 10),
-            comments_count: parseInt(p.comments_count, 10),
-        } as PostType;
-    });};
+  const totalPosts = count.length;
+  const totalPages = Math.ceil(totalPosts / limit);
+  const hasNextPage = page < totalPages;
+
+  const formattedPosts = posts.map((post) => {
+    const p = post.toJSON() as any;
+    return {
+      ...p,
+      likes_count: parseInt(p.likes_count, 10) || 0,
+      dislikes_count: parseInt(p.dislikes_count, 10) || 0,
+      comments_count: parseInt(p.comments_count, 10) || 0,
+    } as PostType;
+  });
+
+  return {
+    posts: formattedPosts,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      hasNextPage,
+      totalPosts,
+    },
+  };
+};
 
 export const updatePostInDB = async (
   postId: string,
