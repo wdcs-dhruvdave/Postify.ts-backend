@@ -35,7 +35,7 @@ export const getCommentsForPostFromDB = async (
   const { count, rows: comments } = await Comment.findAndCountAll({
     where: {
       post_id: postId,
-      parent_id: null, // Fetch only top-level comments
+      parent_id: null, 
     },
     include: getCommentIncludeStructure(),
     order: [["created_at", "ASC"]],

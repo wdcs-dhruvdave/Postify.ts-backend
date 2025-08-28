@@ -17,10 +17,10 @@ export const registerUser = async (req: Request, res: Response) => {
         
         if (error instanceof UniqueConstraintError) {
             if (error.errors[0].path === 'email') {
-                return res.status(409).json({ message: 'Email already exists.' });
+                return res.status(400).json({ message: 'Email already exists.' });
             }
             if (error.errors[0].path === 'username') {
-                return res.status(409).json({ message: 'Username already exists.' });
+                return res.status(400).json({ message: 'Username already exists.' });
             }
         }
         

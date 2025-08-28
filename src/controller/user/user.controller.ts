@@ -3,6 +3,7 @@ import * as UserService from '../../services/user.service';
 import { USER_MESSAGES } from '../../constants/user.constant';
 import { entryLogger, errorLogger } from '../../utils/logger';
 import * as PostService from "../../services/post.service";
+import { UniqueConstraintError } from 'sequelize';
 
 interface AuthRequest extends Request {
   user?: { id: string; role: string };
@@ -70,10 +71,9 @@ export const followUser = async (req: AuthRequest, res: Response) => {
     await UserService.followUserInDB(followerId, followingId);
     res.status(200).json({ message: USER_MESSAGES.FOLLOW_SUCCESS });
   } catch (error: any) {
-    if (error.code === '23505') {
+    if (error instanceof UniqueConstraintError) {
       return res.status(409).json({ message: 'You are already following this user.' });
     }
-
     errorLogger(error, `User ${followerId} failed to follow user ${followingId}`);
     res.status(500).json({ message: 'Server error during follow.' });
   }
@@ -91,8 +91,6 @@ export const unfollowUser = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: 'Server error during unfollow.' });
   }
 };
-
-
 
 export const getPostsByUsername = async (req: AuthRequest, res: Response) => {
   const { username } = req.params;
