@@ -7,4 +7,4 @@ const commentrouter = Router({ mergeParams: true });
 commentrouter.get("/", getCommentsForPost);
 commentrouter.post("/", protectMiddleware, createComment);
 
-export default commentrouter;
+export default commentrouter; 

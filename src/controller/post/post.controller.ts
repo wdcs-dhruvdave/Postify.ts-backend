@@ -165,3 +165,29 @@ export const getCategories = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Server error fetching categories" });
     }
 };
+
+export const getPostLikes = async (req: AuthRequest, res: Response) => {
+    const postId = req.params.id;
+    const currentUserId = req.user?.id;
+    entryLogger(`Fetching likes for post ${postId}`);
+
+    try {
+        const usersWhoLiked = await PostService.getLikesForPostFromDB(postId, currentUserId);
+        res.status(200).json(usersWhoLiked);
+    } catch (error: any) {
+        errorLogger(error, `Failed to fetch likes for post ${postId}`);
+        res.status(500).json({ message: error.message || "Server error fetching post likes." });
+    }
+};
+
+export const getPostDislikes = async (req: AuthRequest, res: Response) => {
+    const postId = req.params.id;
+    entryLogger(`Fetching dislikes for post ${postId}`);
+    try {
+        const usersWhoDisliked = await PostService.getDislikesForPostFromDB(postId);
+        res.status(200).json(usersWhoDisliked);
+    } catch (error: any) {
+        errorLogger(error, `Failed to fetch dislikes for post ${postId}`);
+        res.status(500).json({ message: error.message || "Server error fetching post dislikes." });
+    }
+};

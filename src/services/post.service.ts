@@ -3,8 +3,8 @@ import { User, Category, Comment, Dislike, Like, Follow, Post } from "../models"
 import { PostAttributes } from "../models/post.model";
 import sequelize from "../config/database";
 import { Op, Sequelize, Transaction } from "sequelize";
-import { log } from "console";
 import { createNotification } from "./notification.service";
+import { PublicUser } from "../types/user.types";
 
 export const createPostInDB = async (userId: string, data: CreatePostData): Promise<PostAttributes> => {
   let { title, content_text, image_url, category_id } = data;
@@ -290,3 +290,66 @@ export const getCategoriesFromDB = async (): Promise<CategoryType[]> => {
   });
   return categories.map((category) => category.toJSON());
 };
+
+export const getLikesForPostFromDB = async (postId: string, currentUserId?: string): Promise<PublicUser[]> => {
+  const attributes: any[] = [
+    'id', 'username', 'name', 'avatar_url'
+  ];
+  if (currentUserId) {
+    attributes.push([
+      Sequelize.literal(`EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${currentUserId}' AND "follows"."following_id" = "user"."id")`),
+      'is_following'
+    ]);
+  }
+  const likes = await Like.findAll({
+    where: { post_id: postId },
+    include: [{ 
+        model: User, 
+        as: "user", 
+        attributes
+    }],
+  });
+  return likes.map(like => (like.get('user') as PublicUser));
+}
+
+export const getDislikesForPostFromDB = async (postId: string, currentUserId?: string): Promise<PublicUser[]> => {
+  const attributes: any[] = [
+    'id', 'username', 'name', 'avatar_url'
+  ];
+  if(currentUserId){
+    attributes.push([
+      Sequelize.literal(`EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${currentUserId}' AND "follows"."following_id" = "user"."id")`),
+      'is_following'
+    ]);
+  }
+  const dislikes = await Dislike.findAll({
+    where: { post_id: postId },
+    include: [{
+      model: User,
+      as: "user",
+      attributes
+    }]
+  });
+  return dislikes.map(dislike => (dislike.get('user') as PublicUser));
+}
+
+export const getCommentsforPostFromDB = async (postId: string, currentUserId?: string):Promise<PublicUser[]> => {
+  const attributes: any[] = [
+    'id', 'username', 'name', 'avatar_url'
+  ];
+  if(currentUserId){
+    attributes.push([
+      Sequelize.literal(`EXISTS(SELECT 1 FROM follows WHERE "follows"."follower_id" = '${currentUserId}' AND "follows"."following_id" = "user"."id")`),
+      'is_following'
+    ]);
+  }
+  const comments = await Comment.findAll({
+    where: { post_id: postId },
+    include: [{
+      model: User,
+      as: "user",
+      attributes
+    }]
+  });
+  return comments.map(comment => (comment.get('user') as PublicUser));
+}
