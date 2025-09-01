@@ -142,7 +142,7 @@ export const getFollowers = async (req: AuthRequest, res: Response) => {
   const currentUserId = req.user?.id;
   entryLogger(`Fetching followers for user: ${username}`);
   try {
-    const followers = await UserService.getFollowersFromDB(username);
+    const followers = await UserService.getFollowersFromDB(username, currentUserId);
     res.json(followers);
   } catch (error: any) {
     errorLogger(error, `Failed to get followers for user: ${username}`);
@@ -155,7 +155,7 @@ export const getFollowing = async (req: AuthRequest, res: Response) => {
   const currentUserId = req.user?.id;
   entryLogger(`Fetching following list for user: ${username}`);
   try {
-    const following = await UserService.getFollowingFromDB(username);
+    const following = await UserService.getFollowingFromDB(username, currentUserId);
     res.json(following);
   } catch (error: any) {
     errorLogger(error, `Failed to get following list for user: ${username}`);
