@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as PostService from '../../services/post.service';
 import { entryLogger, errorLogger } from "../../utils/logger";
+import { as } from "@faker-js/faker/dist/airline-CHFQMWko";
 
 interface AuthRequest extends Request {
   user?: { id: string; role: string };
@@ -163,6 +164,21 @@ export const getCategories = async (req: Request, res: Response) => {
     } catch (error: any) {
         errorLogger(error, 'Failed to fetch categories');
         res.status(500).json({ message: "Server error fetching categories" });
+    }
+};
+
+export const getCategory = async (req: Request, res: Response) => {
+    const categoryId = req.params.id;
+    entryLogger(`Fetching category ${categoryId}.`);
+    try {
+        const category = await PostService.getCategoryFromDb(categoryId);
+        if (!category) {
+            return res.status(404).json({ message: "Category not found" });
+        }
+        res.status(200).json(category);
+    } catch (error: any) {
+        errorLogger(error, `Failed to fetch category ${categoryId}`);
+        res.status(500).json({ message: "Server error fetching category" });
     }
 };
 
