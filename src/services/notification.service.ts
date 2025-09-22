@@ -16,7 +16,7 @@ export const createNotification = async (
 
   if (!sender) return;
 
-  await axios.post("http://localhost:3002/notifications", {
+  await axios.post("http://localhost:3003/notifications", {
     recipient: recipientId,
     sender: {
       id: sender.id,

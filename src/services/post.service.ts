@@ -346,6 +346,12 @@ export const getCategoriesFromDB = async (): Promise<CategoryType[]> => {
   return categories.map((category) => category.toJSON());
 };
 
+export const getCategoryFromDb = async (catgoryId : string): Promise<CategoryType | null> => {
+  const category = await Category.findByPk(catgoryId);
+  if (!category) return null;
+  return category.toJSON(); 
+}
+
 export const getLikesForPostFromDB = async (postId: string, currentUserId?: string): Promise<PublicUser[]> => {
   const attributes: any[] = [
     'id', 'username', 'name', 'avatar_url'
@@ -366,6 +372,7 @@ export const getLikesForPostFromDB = async (postId: string, currentUserId?: stri
   });
   return likes.map(like => (like.get('user') as PublicUser));
 }
+
 
 export const getDislikesForPostFromDB = async (postId: string, currentUserId?: string): Promise<PublicUser[]> => {
   const attributes: any[] = [

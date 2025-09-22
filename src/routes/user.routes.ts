@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { searchUsers, followUser, unfollowUser, getFollowSuggestions, getUserProfile, getPostsByUsername, updateUserProfile, updatePrivacy, getFollowers, getFollowing, getRandomUsers } from '../controller/user/user.controller';
 import { identifyUser, protectMiddleware } from '../middleware/auth.middleware';
+import { emitActivityLog } from '../middleware/activity-logging-middleware';
 
 const userRouter = Router();
 
 userRouter.get('/search',protectMiddleware, searchUsers); 
 userRouter.get('/suggestions', protectMiddleware, getFollowSuggestions);
-userRouter.post('/:id/follow', protectMiddleware, followUser);
+userRouter.post('/:id/follow', protectMiddleware, emitActivityLog("follow"), followUser);
 userRouter.delete('/:id/follow', protectMiddleware, unfollowUser);
 userRouter.get('/:username', identifyUser, getUserProfile);
 userRouter.get('/:username/posts', identifyUser, getPostsByUsername);
