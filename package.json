@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "seed": "ts-node src/scripts/seed.ts",
     "clean": "ts-node src/scripts/clean.ts",
-    "clean-generated-data": "ts-node src/scripts/cleanGeneratedData.ts"
+    "clean-generated-data": "ts-node src/scripts/cleanGeneratedData.ts",
+    "analyze": "ts-node src/scripts/calculate-interests.ts"
   },
   "author": "",
   "license": "ISC",

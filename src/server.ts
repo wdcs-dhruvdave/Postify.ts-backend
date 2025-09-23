@@ -7,6 +7,7 @@ import indexRouter from "./routes/index.routes";
 import { connectDB } from "./config/database";
 import connectMongoDb from "./config/mongo";
 import { initializeActivityListerner } from "./services/activity-logging-service";
+import { calculateInterestScores } from "./scripts/calculate-interests";
 
 dotenv.config();
 
@@ -60,6 +61,11 @@ const startServer = async () => {
     await connectDB();
     await connectMongoDb();
     initializeActivityListerner();
+    await calculateInterestScores();
+
+    const One_MINUTES = 10  *  60  * 1000;
+    setInterval(calculateInterestScores, One_MINUTES);
+
     server.listen(PORT, () => {
       console.log(`🚀 Server running at http://localhost:${PORT}`);
     });

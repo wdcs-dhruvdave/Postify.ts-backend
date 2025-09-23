@@ -10,7 +10,8 @@ type ActivityType =
   | "post_view"
   | "post_share"
   | "profile_view"
-  | "follow";
+  | "follow"
+  | "comment";
 
 interface AuthRequest extends Request {
   user?: {
@@ -78,6 +79,19 @@ export const emitActivityLog =
                 }
               }
               break;
+            case "comment":
+              targetId = req.params.id || req.params.postId;
+              targetCategoryId = req.params.categoryId;
+
+              if (targetId) {
+                post = await Post.findByPk(targetId, {
+                  attributes: ["category_id"],
+                });
+                if (post) {
+                  targetCategoryId = (post as any).category_id;
+                }
+              }
+              break;
 
             case "profile_view":
               targetId = req.params.id || req.params.userId;
@@ -87,7 +101,7 @@ export const emitActivityLog =
               targetId = req.params.id;
               break;
           }
-
+  
           if (userId && targetId) {
             const eventPayload = {
               userId,
