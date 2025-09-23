@@ -10,3 +10,4 @@ export const db = new Pool({
     password: process.env.DB_PASSWORD,
     port: Number(process.env.DB_PORT),
 })
+
