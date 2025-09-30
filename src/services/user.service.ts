@@ -4,6 +4,7 @@ import { UserAttributes } from '../models/user.model';
 import { Sequelize, Op } from 'sequelize';
 import { PostType } from '../types/post.types';
 import { createNotification } from './notification.service';
+import { MESSAGES, CONFIG } from '../constants/constants';
 
 export interface UserProfile extends PublicUser {
   followers_count: number;
@@ -33,7 +34,7 @@ export const searchUsersInDB = async (query: string, currentUserId: string): Pro
         'is_following'
       ]
     ],
-    limit: 10,
+    limit: CONFIG.PAGINATION.SEARCH_LIMIT,
   });
   return users.map(u => u.get({ plain: true }) as unknown as PublicUser);
 };
@@ -107,7 +108,7 @@ export const getPostsByUsernameFromDB = async (username: string, currentUserId?:
   });
 };
 
-export const getFollowSuggestionsFromDB = async (userId: string, limit: number = 5): Promise<PublicUser[]> => {
+export const getFollowSuggestionsFromDB = async (userId: string, limit: number = CONFIG.PAGINATION.SUGGESTION_LIMIT): Promise<PublicUser[]> => {
   const suggestions = await User.findAll({
     where: {
       id: {
@@ -132,7 +133,7 @@ export const getFollowersFromDB = async (
   currentUserId?: string
 ): Promise<PublicUser[]> => {
   const user = await User.findOne({ where: { username }, attributes: ['id'] });
-  if (!user) throw new Error('User not found');
+  if (!user) throw new Error(MESSAGES.USER.NOT_FOUND);
 
   const attributes: any[] = [
     'id', 'username', 'name', 'avatar_url', 'createdAt', 'updatedAt'
@@ -165,7 +166,7 @@ export const getFollowingFromDB = async (
   currentUserId?: string
 ): Promise<PublicUser[]> => {
   const user = await User.findOne({ where: { username }, attributes: ['id'] });
-  if (!user) throw new Error('User not found');
+  if (!user) throw new Error(MESSAGES.USER.NOT_FOUND);
 
   const attributes: any[] = [
     'id', 'username', 'name', 'avatar_url', 'createdAt', 'updatedAt'
@@ -195,7 +196,7 @@ export const getFollowingFromDB = async (
 
 export const updateUserProfileInDB = async (userId: string, data: Partial<UserAttributes>): Promise<Omit<UserAttributes, 'password'>> => {
   const user = await User.findByPk(userId);
-  if (!user) throw new Error('User not found');
+  if (!user) throw new Error(MESSAGES.USER.NOT_FOUND);
 
   await user.update(data);
 
@@ -205,7 +206,7 @@ export const updateUserProfileInDB = async (userId: string, data: Partial<UserAt
 
 export const updatePrivacyInDB = async (userId: string, isPrivate: boolean): Promise<Omit<UserAttributes, 'password'>> => {
     const user = await User.findByPk(userId);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new Error(MESSAGES.USER.NOT_FOUND);
 
     await user.update({ is_private: isPrivate });
     const { password, ...safeUser } = user.toJSON();

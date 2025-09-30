@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodObject } from 'zod';
+import { HttpStatusCode, MESSAGES } from '../constants/constants';
 
 export const validateMiddleware = (Schema: ZodObject<any>) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -13,8 +14,8 @@ export const validateMiddleware = (Schema: ZodObject<any>) => {
       req.body = parsed.body;
       return next();
     } catch (error) {
-      return res.status(400).json({
-        message: "Validation Error",
+      return res.status(HttpStatusCode.BAD_REQUEST).json({
+        message: MESSAGES.COMMON.VALIDATION_ERROR,
         error: error,
       });
     }

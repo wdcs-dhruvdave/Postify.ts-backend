@@ -8,6 +8,8 @@ import { connectDB } from "./config/database";
 import connectMongoDb from "./config/mongo";
 import { initializeActivityListerner } from "./services/activity-logging-service";
 import { calculateInterestScores } from "./scripts/calculate-interests";
+import { CONFIG } from "./constants/constants";
+import { errorLoggerMiddleware, entryLoggerMiddleware } from "./utils/logger";
 
 dotenv.config();
 
@@ -19,9 +21,8 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
-
-const PORT = 4000;
-
+app.use(entryLoggerMiddleware);
+app.use(errorLoggerMiddleware);
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://your-frontend-domain.com"],
@@ -33,9 +34,7 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-import { API_PREFIX } from "./constants/api.constants";
-
-app.use(API_PREFIX, indexRouter);
+app.use(CONFIG.API_PREFIX, indexRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello from server.ts backend!");
@@ -63,11 +62,10 @@ const startServer = async () => {
     initializeActivityListerner();
     await calculateInterestScores();
 
-    const One_MINUTES = 10  *  60  * 1000;
-    setInterval(calculateInterestScores, One_MINUTES);
+    setInterval(calculateInterestScores, CONFIG.ONE_MINUTE_IN_MS);
 
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
+    server.listen(CONFIG.SERVER_PORT, () => {
+      console.log(`🚀 Server running at http://localhost:${CONFIG.SERVER_PORT}`);
     });
   } catch (err) {
     console.error("❌ Failed to start server:", err);
@@ -77,4 +75,4 @@ const startServer = async () => {
 
 startServer();
 
-export { io };
+export { io, app, server, startServer };

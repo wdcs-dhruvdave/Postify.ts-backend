@@ -3,10 +3,9 @@ import jwt from "jsonwebtoken";
 import { RegisterData, LoginData } from '../types/auth.types';
 import { UserAttributes } from "../models/user.model";
 import { User } from "../models/index";
+import { MESSAGES, ENV, CONFIG } from "../constants/constants";
 
-const DEFAULT_AVATAR = `https://api.dicebear.com/8.x/initials/svg?seed=default`;
-
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = ENV.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not set in environment variables");
 }
@@ -24,7 +23,7 @@ export const registerUserService = async (
     name: name || 'anonymous',
     email: email.toLowerCase(),
     password: hashedPassword,
-    avatar_url: avatar_url || `https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg`,
+    avatar_url: avatar_url || CONFIG.AVATAR.DEFAULT_WIKIMEDIA,
   });
 
   const { password: _, ...safeUser } = newUser.toJSON();
@@ -38,12 +37,12 @@ export const loginUserService = async (
 
   const user = await User.findOne({ where: { email: email.toLowerCase() } });
   if (!user) {
-    throw new Error("User not found");
+    throw new Error(MESSAGES.USER.NOT_FOUND);
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    throw new Error("Invalid password");
+    throw new Error(MESSAGES.AUTH.INVALID_PASSWORD);
   }
 
   const payload = {

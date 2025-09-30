@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'user';
+import { UserRole } from "../constants/constants";
 
 export interface PublicUser {
     id: string;

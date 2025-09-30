@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as PostService from '../../services/post.service';
 import { entryLogger, errorLogger } from "../../utils/logger";
-import { as } from "@faker-js/faker/dist/airline-CHFQMWko";
+import { HttpStatusCode, MESSAGES, CONFIG } from "../../constants/constants";
 
 interface AuthRequest extends Request {
   user?: { id: string; role: string };
@@ -10,44 +10,44 @@ interface AuthRequest extends Request {
 export const createPost = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     entryLogger(`User ${userId} creating a post.`);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     try {
         const post = await PostService.createPostInDB(userId, req.body);
-        return res.status(201).json({ message: "Post created successfully", post });
+        return res.status(HttpStatusCode.CREATED).json({ message: MESSAGES.POST.CREATED_SUCCESS, post });
     } catch (error: any) {
         errorLogger(error, `Post creation failed for user ${userId}`);
-        return res.status(500).json({ message: error.message || "Server error during post creation." });
+        return res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: error.message || MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
 export const getAllPosts = async (req: Request, res: Response) => {
     entryLogger("Fetching all public posts");
     try {
-        const page = parseInt(req.query.page as string, 10) || 1;
-        const limit = parseInt(req.query.limit as string, 10) || 10;
+        const page = parseInt(req.query.page as string, 10) || CONFIG.PAGINATION.DEFAULT_PAGE;
+        const limit = parseInt(req.query.limit as string, 10) || CONFIG.PAGINATION.DEFAULT_LIMIT;
         const posts = await PostService.getAllPostsFromDB(page, limit);
         res.setHeader('Cache-Control', 'no-store');
         res.json(posts);
     } catch (error: any) {
         errorLogger(error, "Failed to fetch all posts");
-        res.status(500).json({ message: "Server error fetching posts" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
 export const getFeed = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
-    const page = parseInt(req.query.page as string, 10) || 1;
-    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const page = parseInt(req.query.page as string, 10) || CONFIG.PAGINATION.DEFAULT_PAGE;
+    const limit = parseInt(req.query.limit as string, 10) || CONFIG.PAGINATION.DEFAULT_LIMIT;
 
     entryLogger(`User ${userId} fetching feed page ${page} with limit ${limit}.`);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     try {
         const feedData = await PostService.getFeedFromDB(userId, page, limit);
         res.setHeader('Cache-Control', 'no-store');
         res.json(feedData);
     } catch (error: any) {
         errorLogger(error, `Failed to fetch feed for user ${userId}`);
-        res.status(500).json({ message: "Server error fetching feed" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -61,7 +61,7 @@ export const getPostsByUsername = async (req: AuthRequest, res: Response) => {
     res.json(posts);
   } catch (error: any) {
     errorLogger(error, `Failed to get posts for user: ${username}`);
-    res.status(500).json({ message: 'Server error fetching user posts.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -73,13 +73,16 @@ export const updatePost = async (req: AuthRequest, res: Response) =>{
 
   try {
     const updatedPost = await PostService.updatePostInDB(postId, userId, req.body);
-    res.status(200).json({ message: 'Post updated successfully', post: updatedPost });
+    res.status(HttpStatusCode.OK).json({ message: MESSAGES.POST.UPDATED_SUCCESS, post: updatedPost });
   } catch (error: any) {
     errorLogger(error, `Failed to update post ${postId}`);
-    if (error.message.includes('not authorized')) {
-        return res.status(403).json({ message: error.message });
+    if (error.message === MESSAGES.COMMON.UNAUTHORIZED) {
+        return res.status(HttpStatusCode.FORBIDDEN).json({ message: error.message });
     }
-    res.status(500).json({ message: error.message || 'Server error during post update.' });
+    if (error.message === MESSAGES.POST.NOT_FOUND) {
+        return res.status(HttpStatusCode.NOT_FOUND).json({ message: error.message });
+    }
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: error.message || MESSAGES.COMMON.SERVER_ERROR });
   }
 }
 
@@ -90,27 +93,30 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
 
   try {
     await PostService.deletePostInDB(postId, userId);
-    res.status(200).json({ message: 'Post deleted successfully' });
+    res.status(HttpStatusCode.OK).json({ message: MESSAGES.POST.DELETED_SUCCESS });
   } catch (error: any) {
     errorLogger(error, `Failed to delete post ${postId}`);
-    if (error.message.includes('not authorized')) {
-        return res.status(403).json({ message: error.message });
+    if (error.message === MESSAGES.COMMON.UNAUTHORIZED) {
+        return res.status(HttpStatusCode.FORBIDDEN).json({ message: error.message });
     }
-    res.status(500).json({ message: error.message || 'Server error during post deletion.' });
+    if (error.message === MESSAGES.POST.NOT_FOUND) {
+        return res.status(HttpStatusCode.NOT_FOUND).json({ message: error.message });
+    }
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: error.message || MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
 export const likePost = async (req: AuthRequest, res: Response) => {
-    const userId = req.user?.id;
+    const userId = req.user?.id;  
     const postId = req.params.id;
     entryLogger(`User ${userId} liking post ${postId}.`);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     try {
         await PostService.likePostInDB(userId, postId);
-        res.status(200).json({ message: "Post liked successfully" });
+        res.status(HttpStatusCode.OK).json({ message: MESSAGES.POST.LIKED_SUCCESS });
     } catch (error: any) {
         errorLogger(error, `Failed to like post ${postId} for user ${userId}`);
-        res.status(500).json({ message: "Server error" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -118,13 +124,13 @@ export const unlikePost = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     const postId = req.params.id;
     entryLogger(`User ${userId} unliking post ${postId}.`);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     try {
         await PostService.unlikePostInDB(userId, postId);
-        res.status(200).json({ message: "Like removed successfully" });
+        res.status(HttpStatusCode.OK).json({ message: MESSAGES.POST.LIKE_REMOVED_SUCCESS });
     } catch (error: any) {
         errorLogger(error, `Failed to unlike post ${postId} for user ${userId}`);
-        res.status(500).json({ message: "Server error" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -132,13 +138,13 @@ export const dislikePost = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     const postId = req.params.id;
     entryLogger(`User ${userId} disliking post ${postId}.`);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     try {
         await PostService.dislikePostInDB(userId, postId);
-        res.status(200).json({ message: "Post disliked successfully" });
+        res.status(HttpStatusCode.OK).json({ message: MESSAGES.POST.DISLIKED_SUCCESS });
     } catch (error: any) {
         errorLogger(error, `Failed to dislike post ${postId} for user ${userId}`);
-        res.status(500).json({ message: "Server error" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -146,13 +152,13 @@ export const undislikePost = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     const postId = req.params.id;
     entryLogger(`User ${userId} removing dislike from post ${postId}.`);
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
     try {
         await PostService.undislikePostInDB(userId, postId);
-        res.status(200).json({ message: "Dislike removed successfully" });
+        res.status(HttpStatusCode.OK).json({ message: MESSAGES.POST.DISLIKE_REMOVED_SUCCESS });
     } catch (error: any) {
         errorLogger(error, `Failed to remove dislike from post ${postId} for user ${userId}`);
-        res.status(500).json({ message: "Server error" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -163,7 +169,7 @@ export const getCategories = async (req: Request, res: Response) => {
         res.json(categories);
     } catch (error: any) {
         errorLogger(error, 'Failed to fetch categories');
-        res.status(500).json({ message: "Server error fetching categories" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -173,12 +179,12 @@ export const getCategory = async (req: Request, res: Response) => {
     try {
         const category = await PostService.getCategoryFromDb(categoryId);
         if (!category) {
-            return res.status(404).json({ message: "Category not found" });
+            return res.status(HttpStatusCode.NOT_FOUND).json({ message: MESSAGES.POST.CATEGORY_NOT_FOUND });
         }
-        res.status(200).json(category);
+        res.status(HttpStatusCode.OK).json(category);
     } catch (error: any) {
         errorLogger(error, `Failed to fetch category ${categoryId}`);
-        res.status(500).json({ message: "Server error fetching category" });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -189,10 +195,10 @@ export const getPostLikes = async (req: AuthRequest, res: Response) => {
 
     try {
         const usersWhoLiked = await PostService.getLikesForPostFromDB(postId, currentUserId);
-        res.status(200).json(usersWhoLiked);
+        res.status(HttpStatusCode.OK).json(usersWhoLiked);
     } catch (error: any) {
         errorLogger(error, `Failed to fetch likes for post ${postId}`);
-        res.status(500).json({ message: error.message || "Server error fetching post likes." });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: error.message || MESSAGES.COMMON.SERVER_ERROR });
     }
 };
 
@@ -201,9 +207,9 @@ export const getPostDislikes = async (req: AuthRequest, res: Response) => {
     entryLogger(`Fetching dislikes for post ${postId}`);
     try {
         const usersWhoDisliked = await PostService.getDislikesForPostFromDB(postId);
-        res.status(200).json(usersWhoDisliked);
+        res.status(HttpStatusCode.OK).json(usersWhoDisliked);
     } catch (error: any) {
         errorLogger(error, `Failed to fetch dislikes for post ${postId}`);
-        res.status(500).json({ message: error.message || "Server error fetching post dislikes." });
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: error.message || MESSAGES.COMMON.SERVER_ERROR });
     }
 };

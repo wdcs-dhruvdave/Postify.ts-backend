@@ -17,6 +17,7 @@ import {
 } from "../controller/post/post.controller";
 import { identifyUser, protectMiddleware } from "../middleware/auth.middleware";
 import { emitActivityLog } from "../middleware/activity-logging-middleware";
+import { ROUTES } from "../constants/constants";
 
 const postRouter = Router();
 
@@ -26,7 +27,7 @@ postRouter.put("/:id", protectMiddleware, updatePost);
 postRouter.delete("/:id", protectMiddleware, deletePost);
 
 postRouter.get("/", getAllPosts);
-postRouter.get("/feed", protectMiddleware, getFeed);
+postRouter.get(ROUTES.POSTS.FEED, protectMiddleware, getFeed);
 
 postRouter.post(
   "/:id/like",
@@ -54,7 +55,7 @@ postRouter.delete(
   undislikePost
 );
 
-postRouter.get("/categories", protectMiddleware, getCategories);
+postRouter.get(ROUTES.POSTS.CATEGORIES, protectMiddleware, getCategories);
 
 postRouter.get("/categories/:id", protectMiddleware, getCategory);
 

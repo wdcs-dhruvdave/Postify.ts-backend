@@ -5,7 +5,7 @@ import sequelize from "../config/database";
 import { Op, Sequelize, Transaction } from "sequelize";
 import { createNotification } from "./notification.service";
 import { PublicUser } from "../types/user.types";
-import { includes } from "zod";
+import { MESSAGES, CONFIG } from "../constants/constants";
 
 export const createPostInDB = async (userId: string, data: CreatePostData): Promise<PostAttributes> => {
   let { title, content_text, image_url, category_id } = data;
@@ -13,7 +13,7 @@ export const createPostInDB = async (userId: string, data: CreatePostData): Prom
   let base64Str: string | undefined;
 
   if(image_url){
-    const isValidUrl = /^data:(image|video)\/[a-zA-Z0-9.+-]+;base64,/;
+    const isValidUrl = CONFIG.REGEX.BASE64_IMAGE_VIDEO;
     if(!isValidUrl.test(image_url)){
       throw new Error("Only image and video files are allowed for media.");
     }
@@ -22,7 +22,7 @@ export const createPostInDB = async (userId: string, data: CreatePostData): Prom
       throw new Error("Invalid media format.");
     }
     const sizeInBytes = (base64Str.length * 3) / 4 - (base64Str.endsWith("==") ? 2 : base64Str.endsWith("=") ? 1 : 0);
-    if (sizeInBytes > 50 * 1024 * 1024) {
+    if (sizeInBytes > CONFIG.POST.MEDIA_SIZE_LIMIT) {
       throw new Error("Media file size exceeds 50MB limit.");
     }
   }
@@ -273,8 +273,8 @@ export const updatePostInDB = async (
     ],
   });
 
-  if (!post) throw new Error("Post not found.");
-  if (post.user_id !== userId) throw new Error("You are not authorized to update this post.");
+  if (!post) throw new Error(MESSAGES.POST.NOT_FOUND);
+  if (post.user_id !== userId) throw new Error(MESSAGES.COMMON.UNAUTHORIZED);
 
   await post.update(data);
 
@@ -294,8 +294,8 @@ export const updatePostInDB = async (
 export const deletePostInDB = async (postId: string, userId: string): Promise<void> => {
   const post = await Post.findByPk(postId);
 
-  if (!post) throw new Error("Post not found.");
-  if (post.user_id !== userId) throw new Error("You are not authorized to delete this post.");
+  if (!post) throw new Error(MESSAGES.POST.NOT_FOUND);
+  if (post.user_id !== userId) throw new Error(MESSAGES.COMMON.UNAUTHORIZED);
 
   await post.destroy();
 };

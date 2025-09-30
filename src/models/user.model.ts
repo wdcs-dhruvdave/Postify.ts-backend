@@ -1,6 +1,7 @@
 console.log("--- LOADING THE LATEST USER MODEL FILE ---");
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
+import { UserRole, CONFIG } from '../constants/constants';
 
 export interface UserAttributes {
   id: string;
@@ -70,9 +71,9 @@ User.init(
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM('user', 'admin'),
+      type: DataTypes.ENUM(UserRole.USER, UserRole.ADMIN),
       allowNull: false,
-      defaultValue: 'user',
+      defaultValue: UserRole.USER,
     },
     is_private: {
       type: DataTypes.BOOLEAN,
@@ -90,7 +91,7 @@ User.init(
   },
   {
     sequelize,
-    tableName: 'users', 
+    tableName: CONFIG.TABLE_NAMES.USERS, 
     timestamps: true, 
     underscored: true,  }
 );

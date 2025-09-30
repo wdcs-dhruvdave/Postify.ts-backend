@@ -2,6 +2,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 import User from './user.model';
 import Post from './post.model';
+import { CONFIG } from '../constants/constants';
 
 interface DislikeAttributes {
   id: string;
@@ -41,7 +42,7 @@ Dislike.init({
   },
 }, {
   sequelize,
-  tableName: 'dislikes',
+  tableName: CONFIG.TABLE_NAMES.DISLIKES,
   timestamps: true,
 underscored: true,
 });

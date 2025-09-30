@@ -4,6 +4,7 @@ import {
   getCommentsForPostFromDB,
 } from "../../services/comment.service";
 import { entryLogger } from "../../utils/logger";
+import { HttpStatusCode, MESSAGES } from "../../constants/constants";
 
 interface AuthRequest extends Request {
   user?: { id: string; role: string };
@@ -16,12 +17,12 @@ export const getCommentsForPost = async (req: AuthRequest, res: Response) => {
 
   try {
     const comments = await getCommentsForPostFromDB(postId, page, limit);
-    res.status(200).json(comments);
+    res.status(HttpStatusCode.OK).json(comments);
   } catch (error) {
     console.error(error);
     res
-      .status(500)
-      .json({ message: "Server error: fetching comments for post" });
+      .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.COMMENT.SERVER_ERROR_FETCHING_COMMENTS });
   }
 };
 
@@ -31,11 +32,11 @@ export const createComment = async (req: AuthRequest, res: Response) => {
   const userId = req.user?.id;
 
   if (!content_text || content_text.trim() === "") {
-    return res.status(400).json({ message: "Comment content cannot be empty" });
+    return res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.COMMENT.EMPTY_CONTENT });
   }
 
   if (!userId) {
-    return res.status(401).json({ message: "Unauthorized: User ID not found" });
+    return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMENT.UNAUTHORIZED_USER_ID_NOT_FOUND });
   }
 
   try {
@@ -50,9 +51,9 @@ export const createComment = async (req: AuthRequest, res: Response) => {
       parent_id,
     });
 
-    res.status(201).json(newComment);
+    res.status(HttpStatusCode.CREATED).json(newComment);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error creating comment" });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMENT.SERVER_ERROR_CREATING_COMMENT });
   }
 };

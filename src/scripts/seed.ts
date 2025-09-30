@@ -2,11 +2,9 @@ import { faker } from '@faker-js/faker';
 import bcrypt from 'bcryptjs';
 import sequelize from '../config/database';
 import { User, Post, Category, Like, Comment, Follow } from '../models';
+import { CONFIG } from '../constants/constants';
 
 // --- CONFIGURATION ---
-const NUM_USERS = 50;
-const POSTS_PER_USER = 10;
-const FOLLOWS_PER_USER = 15;
 
 const seedDatabase = async () => {
   console.log('--- Starting database seed ---');
@@ -32,14 +30,14 @@ const seedDatabase = async () => {
     console.log(`✅ Created ${categories.length} categories.`);
 
     // 3. Create Users
-    console.log(`🌱 Seeding ${NUM_USERS} users...`);
+    console.log(`🌱 Seeding ${CONFIG.SEED.NUM_USERS} users...`);
     const usersData = [];
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash('password123', salt); // All users get the same simple password
 
-    for (let i = 0; i < NUM_USERS; i++) {
+    for (let i = 0; i < CONFIG.SEED.NUM_USERS; i++) {
       usersData.push({
-        username: faker.internet.username().toLowerCase(),
+        username: faker.internet.userName().toLowerCase(),
         name: faker.person.fullName(),
         email: faker.internet.email().toLowerCase(),
         password: hashedPassword,
@@ -54,7 +52,7 @@ const seedDatabase = async () => {
     console.log(`🌱 Seeding posts for each user...`);
     const postsData = [];
     for (const user of users) {
-      for (let i = 0; i < POSTS_PER_USER; i++) {
+      for (let i = 0; i < CONFIG.SEED.POSTS_PER_USER; i++) {
         postsData.push({
           user_id: user.id,
           category_id: categories[Math.floor(Math.random() * categories.length)].id,
@@ -74,7 +72,7 @@ const seedDatabase = async () => {
       const usersToFollow = users
         .filter(u => u.id !== user.id) // Can't follow yourself
         .sort(() => 0.5 - Math.random()) // Shuffle users
-        .slice(0, FOLLOWS_PER_USER); // Select a random number of users to follow
+        .slice(0, CONFIG.SEED.FOLLOWS_PER_USER); // Select a random number of users to follow
 
       for (const userToFollow of usersToFollow) {
         followsData.push({
@@ -94,7 +92,7 @@ const seedDatabase = async () => {
       // Each post gets a random number of likes
       const likers = users
         .sort(() => 0.5 - Math.random())
-        .slice(0, Math.floor(Math.random() * (NUM_USERS / 2)));
+        .slice(0, Math.floor(Math.random() * (CONFIG.SEED.NUM_USERS / 2)));
       for (const liker of likers) {
         likesData.push({
           user_id: liker.id,
