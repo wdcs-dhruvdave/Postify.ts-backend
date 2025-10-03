@@ -90,7 +90,7 @@ export const CONFIG = {
 };
 
 export const ENV = {
-  JWT_SECRET: process.env.JWT_SECRET || 'super-secret-jwt-key-for-dev',
+  JWT_SECRET: process.env.JWT_SECRET || '63ekHvEI7Na2hmnOYjqZEtv27kMkXmMJ', // will change later cunntly giving error using env
   DB_HOST: process.env.DB_HOST || 'localhost',
   DB_PORT: process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432,
   DB_USER: process.env.DB_USER || 'postify_user',
