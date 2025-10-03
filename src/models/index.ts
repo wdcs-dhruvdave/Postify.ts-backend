@@ -5,6 +5,7 @@ import Dislike from "./dislike.model";
 import Comment from "./comment.model";
 import Category from "./category.model";
 import Follow from "./follow.model";
+import UserInterestScore from "./user-interest-score.model";
 
 // Chat models
 import Message from "./message.model";
@@ -18,6 +19,12 @@ User.hasMany(Dislike, { foreignKey: 'user_id', as: 'dislikes' });
 User.hasMany(Comment, { foreignKey: 'user_id', as: 'comments' });
 User.hasMany(Follow, { foreignKey: 'follower_id', as: 'followers' });
 User.hasMany(Follow, { foreignKey: 'following_id', as: 'following' });
+
+// UserInterestScore associations
+User.hasMany(UserInterestScore, { foreignKey: 'user_id', as: 'interest_scores' });
+UserInterestScore.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+UserInterestScore.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
+Category.hasMany(UserInterestScore, { foreignKey: 'category_id', as: 'interest_scores' });
 
 // Chat associations
 User.hasMany(Message, { foreignKey: 'sender_id', as: 'sent_messages' });
@@ -60,7 +67,6 @@ Conversation.hasMany(Message, { foreignKey: 'conversation_id', as: 'messages' })
 Conversation.hasMany(Participant, { foreignKey: 'conversation_id', as: 'participants' });
 Conversation.belongsToMany(User, { through: Participant, foreignKey: 'conversation_id', otherKey: 'user_id', as: 'users' });
 
-// ----- Export all models -----
 export {
   User,
   Post,
@@ -69,6 +75,7 @@ export {
   Comment,
   Category,
   Follow,
+  UserInterestScore,
   Message,
   Participant,
   Conversation

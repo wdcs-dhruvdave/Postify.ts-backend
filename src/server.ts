@@ -9,7 +9,7 @@ import connectMongoDb from "./config/mongo";
 import { initializeActivityListerner } from "./services/activity-logging-service";
 import { calculateInterestScores } from "./scripts/calculate-interests";
 import { CONFIG } from "./constants/constants";
-import { errorLoggerMiddleware, entryLoggerMiddleware } from "./utils/logger";
+import { entryLoggerMiddleware, globalErrorHandler, notFoundHandler } from "./utils/logger";
 
 dotenv.config();
 
@@ -21,8 +21,9 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+
 app.use(entryLoggerMiddleware);
-app.use(errorLoggerMiddleware);
+
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://your-frontend-domain.com"],
@@ -39,6 +40,10 @@ app.use(CONFIG.API_PREFIX, indexRouter);
 app.get("/", (req, res) => {
   res.send("Hello from server.ts backend!");
 });
+
+app.use(notFoundHandler);
+
+app.use(globalErrorHandler);
 
 io.on("connection", (socket) => {
   console.log("🔌 A user connected:", socket.id);

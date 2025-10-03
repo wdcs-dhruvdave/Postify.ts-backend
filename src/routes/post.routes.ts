@@ -10,6 +10,7 @@ import {
   getPostDislikes,
   getPostLikes,
   getPostsByUsername,
+  getRecommendedPosts,
   likePost,
   undislikePost,
   unlikePost,
@@ -17,52 +18,28 @@ import {
 } from "../controller/post/post.controller";
 import { identifyUser, protectMiddleware } from "../middleware/auth.middleware";
 import { emitActivityLog } from "../middleware/activity-logging-middleware";
-import { ROUTES } from "../constants/constants";
+import { ROUTES, ActivityType } from "../constants/constants";
 
 const postRouter = Router();
 
-postRouter.post("/", protectMiddleware, createPost);
-
-postRouter.put("/:id", protectMiddleware, updatePost);
-postRouter.delete("/:id", protectMiddleware, deletePost);
-
 postRouter.get("/", getAllPosts);
-postRouter.get(ROUTES.POSTS.FEED, protectMiddleware, getFeed);
-
-postRouter.post(
-  "/:id/like",
-  protectMiddleware,
-  emitActivityLog("post_like"),
-  likePost
-);
-postRouter.delete(
-  "/:id/like",
-  protectMiddleware,
-  emitActivityLog("post_dislike"),
-  unlikePost
-);
-
-postRouter.post(
-  "/:id/dislike",
-  protectMiddleware,
-  emitActivityLog("post_dislike"),
-  dislikePost
-);
-postRouter.delete(
-  "/:id/dislike",
-  protectMiddleware,
-  emitActivityLog("post_dislike"),
-  undislikePost
-);
-
-postRouter.get(ROUTES.POSTS.CATEGORIES, protectMiddleware, getCategories);
-
-postRouter.get("/categories/:id", protectMiddleware, getCategory);
+postRouter.get(ROUTES.POSTS.RECOMMENDED, identifyUser, getRecommendedPosts);
 
 postRouter.get("/:username/posts", identifyUser, getPostsByUsername);
-
 postRouter.get("/:id/likers", identifyUser, getPostLikes);
-
 postRouter.get("/:id/dislikers", identifyUser, getPostDislikes);
+
+postRouter.use(protectMiddleware);
+postRouter.post("/", createPost);
+postRouter.put("/:id", updatePost);
+postRouter.delete("/:id", deletePost);
+postRouter.get(ROUTES.POSTS.FEED, getFeed);
+
+postRouter.post("/:id/like", emitActivityLog(ActivityType.POST_LIKE), likePost);
+postRouter.delete("/:id/like", emitActivityLog(ActivityType.POST_UNLIKE), unlikePost);
+postRouter.post("/:id/dislike", emitActivityLog(ActivityType.POST_DISLIKE), dislikePost);
+postRouter.delete("/:id/dislike", emitActivityLog(ActivityType.POST_UNDISLIKE), undislikePost);
+postRouter.get(ROUTES.POSTS.CATEGORIES, getCategories);
+postRouter.get("/categories/:id", getCategory);
 
 export default postRouter;

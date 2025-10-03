@@ -5,7 +5,9 @@ import { ROUTES } from "../constants/constants";
 
 const notificationRouter = Router();
 
-notificationRouter.get('/', protectMiddleware, getNotifications);
-notificationRouter.post(ROUTES.NOTIFICATIONS.READ,protectMiddleware, markNotificationsAsRead);
+notificationRouter.use(protectMiddleware);
+
+notificationRouter.get('/', getNotifications);
+notificationRouter.post(ROUTES.NOTIFICATIONS.READ, markNotificationsAsRead);
 
 export default notificationRouter;

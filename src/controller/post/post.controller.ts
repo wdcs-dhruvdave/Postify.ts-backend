@@ -202,6 +202,23 @@ export const getPostLikes = async (req: AuthRequest, res: Response) => {
     }
 };
 
+export const getRecommendedPosts = async (req: AuthRequest, res: Response) => {
+    const userId = req.user?.id || (req.query.userId as string);
+    const page = parseInt(req.query.page as string, 10) || CONFIG.PAGINATION.DEFAULT_PAGE;
+    const limit = parseInt(req.query.limit as string, 10) || CONFIG.PAGINATION.DEFAULT_LIMIT;
+
+    entryLogger(`Fetching recommended posts for user ${userId || 'anonymous'} - page ${page}, limit ${limit}`);
+    
+    try {
+        const recommendedData = await PostService.getRecommendedPostsFromDB(userId, page, limit);
+        res.setHeader('Cache-Control', 'no-store');
+        res.json(recommendedData);
+    } catch (error: any) {
+        errorLogger(error, `Failed to fetch recommended posts for user ${userId || 'anonymous'}`);
+        res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
+    }
+};
+
 export const getPostDislikes = async (req: AuthRequest, res: Response) => {
     const postId = req.params.id;
     entryLogger(`Fetching dislikes for post ${postId}`);

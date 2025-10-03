@@ -16,7 +16,9 @@ export enum UserRole {
 
 export enum ActivityType {
   POST_LIKE = 'post_like',
+  POST_UNLIKE = 'post_unlike',
   POST_DISLIKE = 'post_dislike',
+  POST_UNDISLIKE = 'post_undislike',
   POST_VIEW = 'post_view',
   POST_SHARE = 'post_share',
   PROFILE_VIEW = 'profile_view',
@@ -115,6 +117,7 @@ export const ROUTES = {
   POSTS: {
     BASE: '/posts',
     FEED: '/feed',
+    RECOMMENDED: '/recommended',
     CATEGORIES: '/categories',
   },
   NOTIFICATIONS: {

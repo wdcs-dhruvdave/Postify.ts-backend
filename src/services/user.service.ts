@@ -1,5 +1,11 @@
 import { User, Follow, Post } from '../models';
-import { PublicUser } from '../types/user.types';
+import { 
+    PublicUser, 
+    SequelizeUserAttributes,
+    BasicUserAttributes,
+    UserWithTimestamps,
+    UserWithFollowStatus
+} from '../types/user.types';
 import { UserAttributes } from '../models/user.model';
 import { Sequelize, Op } from 'sequelize';
 import { PostType } from '../types/post.types';
@@ -12,6 +18,46 @@ export interface UserProfile extends PublicUser {
   is_following?: boolean;
 }
 
+const createUserSearchAttributes = (currentUserId?: string): SequelizeUserAttributes => {
+  const baseAttributes: SequelizeUserAttributes = [
+    'id', 'username', 'name', 'avatar_url',
+    [Sequelize.col('created_at'), 'created_at'], 
+    [Sequelize.col('updated_at'), 'updated_at']
+  ];
+
+  if (currentUserId) {
+    baseAttributes.push([
+      Sequelize.literal(`EXISTS(
+        SELECT 1 FROM follows 
+        WHERE "follows"."follower_id" = '${currentUserId}' 
+        AND "follows"."following_id" = "User"."id"
+      )`),
+      'is_following'
+    ]);
+  }
+
+  return baseAttributes;
+};
+
+const createFollowListAttributes = (currentUserId?: string, targetTable: 'follower' | 'following' = 'follower'): SequelizeUserAttributes => {
+  const baseAttributes: SequelizeUserAttributes = [
+    'id', 'username', 'name', 'avatar_url', 'createdAt', 'updatedAt'
+  ];
+
+  if (currentUserId) {
+    baseAttributes.push([
+      Sequelize.literal(`EXISTS(
+        SELECT 1 FROM follows 
+        WHERE "follows"."follower_id" = '${currentUserId}' 
+        AND "follows"."following_id" = "${targetTable}"."id"
+      )`),
+      'is_following'
+    ]);
+  }
+
+  return baseAttributes;
+};
+
 export const searchUsersInDB = async (query: string, currentUserId: string): Promise<PublicUser[]> => {
   const users = await User.findAll({
     where: {
@@ -21,19 +67,7 @@ export const searchUsersInDB = async (query: string, currentUserId: string): Pro
       ],
       // id: { [Op.ne]: currentUserId }
     },
-    attributes: [
-      'id', 'username', 'name', 'avatar_url',
-      [Sequelize.col('created_at'), 'created_at'], 
-      [Sequelize.col('updated_at'), 'updated_at'],
-      [
-        Sequelize.literal(`EXISTS(
-          SELECT 1 FROM follows 
-          WHERE "follows"."follower_id" = '${currentUserId}' 
-          AND "follows"."following_id" = "User"."id"
-        )`),
-        'is_following'
-      ]
-    ],
+    attributes: createUserSearchAttributes(currentUserId),
     limit: CONFIG.PAGINATION.SEARCH_LIMIT,
   });
   return users.map(u => u.get({ plain: true }) as unknown as PublicUser);
@@ -135,26 +169,12 @@ export const getFollowersFromDB = async (
   const user = await User.findOne({ where: { username }, attributes: ['id'] });
   if (!user) throw new Error(MESSAGES.USER.NOT_FOUND);
 
-  const attributes: any[] = [
-    'id', 'username', 'name', 'avatar_url', 'createdAt', 'updatedAt'
-  ];
-  if (currentUserId) {
-    attributes.push([
-      Sequelize.literal(`EXISTS(
-        SELECT 1 FROM follows 
-        WHERE "follows"."follower_id" = '${currentUserId}' 
-        AND "follows"."following_id" = "follower"."id"
-      )`),
-      'is_following'
-    ]);
-  }
-
   const followers = await Follow.findAll({
     where: { following_id: (user as any).id },
     include: [{
       model: User,
       as: 'follower',
-      attributes
+      attributes: createFollowListAttributes(currentUserId, 'follower')
     }]
   });
 
@@ -168,26 +188,12 @@ export const getFollowingFromDB = async (
   const user = await User.findOne({ where: { username }, attributes: ['id'] });
   if (!user) throw new Error(MESSAGES.USER.NOT_FOUND);
 
-  const attributes: any[] = [
-    'id', 'username', 'name', 'avatar_url', 'createdAt', 'updatedAt'
-  ];
-  if (currentUserId) {
-    attributes.push([
-      Sequelize.literal(`EXISTS(
-        SELECT 1 FROM follows 
-        WHERE "follows"."follower_id" = '${currentUserId}' 
-        AND "follows"."following_id" = "following"."id"
-      )`),
-      'is_following'
-    ]);
-  }
-
   const following = await Follow.findAll({
     where: { follower_id: (user as any).id },
     include: [{
       model: User,
       as: 'following',
-      attributes
+      attributes: createFollowListAttributes(currentUserId, 'following')
     }]
   });
 
