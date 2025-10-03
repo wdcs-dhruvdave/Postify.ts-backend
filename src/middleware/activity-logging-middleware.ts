@@ -1,109 +1,97 @@
-import { Response, Request, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import onFinished from "on-finished";
 import appEmitter from "../event-emmiter/user-action-emmiter";
-import { Post } from "../models";
 import { entryLogger, errorLogger } from "../utils/logger";
-
-type ActivityType =
-  | "post_like"
-  | "post_dislike"
-  | "post_view"
-  | "post_share"
-  | "profile_view"
-  | "follow"
-  | "comment";
-
-interface AuthRequest extends Request {
-  user?: {
-    id: string;
-  };
-}
+import { ActivityType, CONFIG } from "../constants/constants";
+import { AuthRequest } from "../types/request.types";
+import { getPostCategoryById, PostCategoryData } from "../orm/post.orm";
 
 export const emitActivityLog =
   (activityType: ActivityType) =>
   (req: AuthRequest, res: Response, next: NextFunction) => {
-    onFinished(res, async (err, res) => {
+    interface EventPayload {
+      userId: string;
+      activityType: ActivityType;
+      targetId: string;
+      targetCategoryId?: string;
+    }
+
+
+
+    onFinished(res, async (err: Error | null, res: Response) => {
       entryLogger(
         `[Activity Middleware] Request finished for ${req.method} ${req.originalUrl} with status ${res.statusCode}`
       );
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         try {
-          const userId = req.user?.id;
+          const userId: string | undefined = req.user?.id;
           let targetId: string | undefined;
           let targetCategoryId: string | undefined;
-          let post;
+          let post: PostCategoryData | null | undefined;
 
           switch (activityType) {
-            case "post_like":
+            case ActivityType.POST_LIKE:
               targetId = req.params.id || req.params.postId;
               if (targetId) {
-                post = await Post.findByPk(targetId, {
-                  attributes: ["category_id"],
-                });
+                post = await getPostCategoryById(targetId);
+                  if(post) {
+                    targetCategoryId = post.category_id;
+                  }
+              }
+              break;
+            case ActivityType.POST_UNLIKE:
+            case ActivityType.POST_DISLIKE:
+            case ActivityType.POST_UNDISLIKE:
+              targetId = req.params.id || req.params.postId;
+              if (targetId) {
+                post = await getPostCategoryById(targetId);
                 if (post) {
-                  targetCategoryId = (post as any).category_id;
+                  targetCategoryId = post.category_id;
                 }
               }
               break;
-            case "post_dislike":
+            case ActivityType.POST_VIEW:
               targetId = req.params.id || req.params.postId;
               if (targetId) {
-                post = await Post.findByPk(targetId, {
-                  attributes: ["category_id"],
-                });
+                post = await getPostCategoryById(targetId);
                 if (post) {
-                  targetCategoryId = (post as any).category_id;
+                  targetCategoryId = post.category_id;
                 }
               }
               break;
-            case "post_view":
+            case ActivityType.POST_SHARE:
               targetId = req.params.id || req.params.postId;
               if (targetId) {
-                post = await Post.findByPk(targetId, {
-                  attributes: ["category_id"],
-                });
+                post = await getPostCategoryById(targetId);
                 if (post) {
-                  targetCategoryId = (post as any).category_id;
+                  targetCategoryId = post.category_id;
                 }
               }
               break;
-            case "post_share":
-              targetId = req.params.id || req.params.postId;
-              if (targetId) {
-                post = await Post.findByPk(targetId, {
-                  attributes: ["category_id"],
-                });
-                if (post) {
-                  targetCategoryId = (post as any).category_id;
-                }
-              }
-              break;
-            case "comment":
+            case ActivityType.COMMENT:
               targetId = req.params.id || req.params.postId;
               targetCategoryId = req.params.categoryId;
 
               if (targetId) {
-                post = await Post.findByPk(targetId, {
-                  attributes: ["category_id"],
-                });
+                post = await getPostCategoryById(targetId);
                 if (post) {
-                  targetCategoryId = (post as any).category_id;
+                  targetCategoryId = post.category_id;
                 }
               }
               break;
 
-            case "profile_view":
+            case ActivityType.PROFILE_VIEW:
               targetId = req.params.id || req.params.userId;
               break;
 
-            case "follow":
+            case ActivityType.FOLLOW:
               targetId = req.params.id;
               break;
           }
-  
+
           if (userId && targetId) {
-            const eventPayload = {
+            const eventPayload: EventPayload = {
               userId,
               activityType,
               targetId,
@@ -111,15 +99,15 @@ export const emitActivityLog =
             };
 
             entryLogger(
-              `[Activity Middleware] Emitting 'log_activity' event with payload: ${JSON.stringify(
-                eventPayload
-              )}`
+              `[Activity Middleware] Emitting '${
+                CONFIG.EVENTS.LOG_ACTIVITY
+              }' event with payload: ${JSON.stringify(eventPayload)}`
             );
 
-            appEmitter.emit("log_activity", eventPayload);
+            appEmitter.emit(CONFIG.EVENTS.LOG_ACTIVITY, eventPayload);
 
             entryLogger(
-              `[Activity Middleware] Successfully emitted 'log_activity' for user ${userId}.`
+              `[Activity Middleware] Successfully emitted '${CONFIG.EVENTS.LOG_ACTIVITY}' for user ${userId}.`
             );
           }
         } catch (error) {

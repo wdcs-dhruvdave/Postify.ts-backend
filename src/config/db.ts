@@ -1,13 +1,14 @@
-import {Pool} from 'pg';
+import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import { ENV } from '../constants/constants';
 
 dotenv.config();
 
 export const db = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_DATABASE,
-    password: process.env.DB_PASSWORD,
-    port: Number(process.env.DB_PORT),
-})
+  user: ENV.DB_USER,
+  host: ENV.DB_HOST,
+  database: ENV.DB_DATABASE,
+  password: ENV.DB_PASSWORD,
+  port: ENV.DB_PORT,
+});
 

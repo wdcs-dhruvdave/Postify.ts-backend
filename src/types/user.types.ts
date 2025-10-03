@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'user';
+import { UserRole } from "../constants/constants";
 
 export interface PublicUser {
     id: string;
@@ -13,4 +13,24 @@ export interface PublicUser {
     updated_at: Date;
     is_following?: boolean;
     is_followed_by?: boolean;
+}
+
+
+export type SequelizeUserAttributes = (string | [any, string])[];
+
+
+export interface BasicUserAttributes {
+    id: string;
+    username: string;
+    name: string;
+    avatar_url: string;
+}
+
+export interface UserWithTimestamps extends BasicUserAttributes {
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface UserWithFollowStatus extends UserWithTimestamps {
+    is_following?: boolean;
 }

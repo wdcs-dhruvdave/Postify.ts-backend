@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
+import { CONFIG } from '../constants/constants';
 
 export interface ConversationAttributes {
   id: string;
@@ -46,7 +47,7 @@ Conversation.init(
   },
   {
     sequelize,
-    tableName: 'conversations',
+    tableName: CONFIG.TABLE_NAMES.CONVERSATIONS,
     timestamps: true,
     underscored: true,
   }

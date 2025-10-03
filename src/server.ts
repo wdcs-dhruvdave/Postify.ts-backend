@@ -8,6 +8,8 @@ import { connectDB } from "./config/database";
 import connectMongoDb from "./config/mongo";
 import { initializeActivityListerner } from "./services/activity-logging-service";
 import { calculateInterestScores } from "./scripts/calculate-interests";
+import { CONFIG } from "./constants/constants";
+import { entryLoggerMiddleware, globalErrorHandler, notFoundHandler } from "./utils/logger";
 
 dotenv.config();
 
@@ -20,7 +22,7 @@ const io = new Server(server, {
   },
 });
 
-const PORT = 4000;
+app.use(entryLoggerMiddleware);
 
 app.use(
   cors({
@@ -33,13 +35,15 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-import { API_PREFIX } from "./constants/api.constants";
-
-app.use(API_PREFIX, indexRouter);
+app.use(CONFIG.API_PREFIX, indexRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello from server.ts backend!");
 });
+
+app.use(notFoundHandler);
+
+app.use(globalErrorHandler);
 
 io.on("connection", (socket) => {
   console.log("🔌 A user connected:", socket.id);
@@ -63,11 +67,10 @@ const startServer = async () => {
     initializeActivityListerner();
     await calculateInterestScores();
 
-    const One_MINUTES = 10  *  60  * 1000;
-    setInterval(calculateInterestScores, One_MINUTES);
+    setInterval(calculateInterestScores, CONFIG.ONE_MINUTE_IN_MS);
 
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
+    server.listen(CONFIG.SERVER_PORT, () => {
+      console.log(`🚀 Server running at http://localhost:${CONFIG.SERVER_PORT}`);
     });
   } catch (err) {
     console.error("❌ Failed to start server:", err);
@@ -77,4 +80,4 @@ const startServer = async () => {
 
 startServer();
 
-export { io };
+export { io, app, server, startServer };

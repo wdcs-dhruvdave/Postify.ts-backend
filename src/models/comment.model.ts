@@ -2,6 +2,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 import User from './user.model';
 import Post from './post.model';
+import { CONFIG } from '../constants/constants';
 
 export interface CommentAttributes {
   id: string;
@@ -47,7 +48,7 @@ Comment.init({
     type: DataTypes.UUID,
     allowNull: true, 
     references: {
-      model: 'comments', 
+      model: CONFIG.TABLE_NAMES.COMMENTS, 
       key: 'id',
     },
   },
@@ -57,7 +58,7 @@ Comment.init({
   },
 }, {
   sequelize,
-  tableName: 'comments',
+  tableName: CONFIG.TABLE_NAMES.COMMENTS,
   timestamps: true,
   underscored: true,
 });

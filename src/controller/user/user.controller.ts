@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import * as UserService from '../../services/user.service';
-import { USER_MESSAGES } from '../../constants/user.constant';
 import { entryLogger, errorLogger } from '../../utils/logger';
 import * as PostService from "../../services/post.service";
 import { UniqueConstraintError } from 'sequelize';
+import { HttpStatusCode, MESSAGES, CONFIG } from '../../constants/constants';
 
 interface AuthRequest extends Request {
   user?: { id: string; role: string };
@@ -15,7 +15,7 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
   entryLogger(`Searching for user with query: "${query}"`);
 
   if (!currentUserId) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(HttpStatusCode.UNAUTHORIZED).json({ message: MESSAGES.COMMON.UNAUTHORIZED });
   }
 
   if (!query) {
@@ -27,7 +27,7 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
     res.json(users);
   } catch (error: any) {
     errorLogger(error, 'User search failed');
-    res.status(500).json({ message: 'Server error during search.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -39,7 +39,7 @@ export const getFollowSuggestions = async (req: AuthRequest, res: Response) => {
     res.json(suggestions);
   } catch (error: any) {
     errorLogger(error, `Failed to get follow suggestions for user: ${userId}`);
-    res.status(500).json({ message: 'Server error fetching suggestions.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -50,12 +50,12 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userProfile = await UserService.getUserProfileFromDB(username, currentUserId);
     if (!userProfile) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(HttpStatusCode.NOT_FOUND).json({ message: MESSAGES.USER.NOT_FOUND });
     }
     res.json(userProfile);
   } catch (error: any) {
     errorLogger(error, `Failed to get profile for user: ${username}`);
-    res.status(500).json({ message: 'Server error fetching profile.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -65,17 +65,17 @@ export const followUser = async (req: AuthRequest, res: Response) => {
   entryLogger(`User ${followerId} attempting to follow user ${followingId}`);
 
   if (followerId === followingId) {
-    return res.status(400).json({ message: USER_MESSAGES.CANNOT_FOLLOW_SELF });
+    return res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.USER.CANNOT_FOLLOW_SELF });
   }
   try {
     await UserService.followUserInDB(followerId, followingId);
-    res.status(200).json({ message: USER_MESSAGES.FOLLOW_SUCCESS });
+    res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER.FOLLOW_SUCCESS });
   } catch (error: any) {
     if (error instanceof UniqueConstraintError) {
-      return res.status(409).json({ message: 'You are already following this user.' });
+      return res.status(HttpStatusCode.CONFLICT).json({ message: MESSAGES.USER.ALREADY_FOLLOWING });
     }
     errorLogger(error, `User ${followerId} failed to follow user ${followingId}`);
-    res.status(500).json({ message: 'Server error during follow.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -85,10 +85,10 @@ export const unfollowUser = async (req: AuthRequest, res: Response) => {
   entryLogger(`User ${followerId} attempting to unfollow user ${followingId}`);
   try {
     await UserService.unfollowUserInDB(followerId, followingId);
-    res.status(200).json({ message: USER_MESSAGES.UNFOLLOW_SUCCESS });
+    res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER.UNFOLLOW_SUCCESS });
   } catch (error: any) {
     errorLogger(error, `User ${followerId} failed to unfollow user ${followingId}`);
-    res.status(500).json({ message: 'Server error during unfollow.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -102,7 +102,7 @@ export const getPostsByUsername = async (req: AuthRequest, res: Response) => {
     res.json(posts);
   } catch (error: any) {
     errorLogger(error, `Failed to get posts for user: ${username}`);
-    res.status(500).json({ message: 'Server error fetching user posts.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -111,10 +111,10 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
   entryLogger(`User ${userId} attempting to update profile.`);
   try {
     const updatedUser = await UserService.updateUserProfileInDB(userId, req.body);
-    res.status(200).json({ message: 'Profile updated successfully', user: updatedUser });
+    res.status(HttpStatusCode.OK).json({ message: MESSAGES.USER.PROFILE_UPDATED_SUCCESS, user: updatedUser });
   } catch (error: any) {
     errorLogger(error, `Failed to update profile for user ${userId}`);
-    res.status(500).json({ message: 'Server error during profile update.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -123,17 +123,17 @@ export const updatePrivacy = async (req: AuthRequest, res: Response) => {
   const { is_private } = req.body;
 
   if (typeof is_private !== 'boolean') {
-    return res.status(400).json({ message: 'Invalid is_private value provided.' });
+    return res.status(HttpStatusCode.BAD_REQUEST).json({ message: MESSAGES.USER.INVALID_PRIVACY_VALUE });
   }
   try {
     const updatedUser = await UserService.updatePrivacyInDB(userId, is_private);
-    res.status(200).json({ 
-        message: 'Privacy setting updated successfully.',
+    res.status(HttpStatusCode.OK).json({ 
+        message: MESSAGES.USER.PRIVACY_UPDATED_SUCCESS,
         user: updatedUser 
     });
   } catch (error: any) {
     errorLogger(error, `Failed to update privacy for user: ${userId}`);
-    res.status(500).json({ message: 'Server error during privacy update.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -146,7 +146,7 @@ export const getFollowers = async (req: AuthRequest, res: Response) => {
     res.json(followers);
   } catch (error: any) {
     errorLogger(error, `Failed to get followers for user: ${username}`);
-    res.status(500).json({ message: 'Server error fetching followers.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -159,7 +159,7 @@ export const getFollowing = async (req: AuthRequest, res: Response) => {
     res.json(following);
   } catch (error: any) {
     errorLogger(error, `Failed to get following list for user: ${username}`);
-    res.status(500).json({ message: 'Server error fetching following list.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };
 
@@ -167,10 +167,10 @@ export const getRandomUsers = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   entryLogger(`Fetching random user suggestions for user: ${userId}`);
   try {
-    const users = await UserService.getFollowSuggestionsFromDB(userId, 10); 
+    const users = await UserService.getFollowSuggestionsFromDB(userId, CONFIG.PAGINATION.SEARCH_LIMIT); 
     res.json(users);
   } catch (error: any) {
     errorLogger(error, `Failed to get random users for user: ${userId}`);
-    res.status(500).json({ message: 'Server error fetching suggestions.' });
+    res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json({ message: MESSAGES.COMMON.SERVER_ERROR });
   }
 };

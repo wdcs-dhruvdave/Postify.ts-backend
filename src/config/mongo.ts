@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
+import { ENV } from "../constants/constants";
 
 export const connectMongoDb = async () => {
   try {
-    await mongoose.connect("mongodb://127.0.0.1:27017/postify_notifications", {
-      serverSelectionTimeoutMS: 5000,
+    await mongoose.connect(ENV.MONGO_URI, {
+      serverSelectionTimeoutMS: ENV.MONGO_SERVER_SELECTION_TIMEOUT_MS,
     });
     console.log("✅ MongoDB connected successfully");
   } catch (err) {

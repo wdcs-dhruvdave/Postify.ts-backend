@@ -1,28 +1,29 @@
 import { z } from 'zod';
+import { MESSAGES } from '../constants/constants';
 
 export const registerSchema = z.object({
   body: z.object({
     username: z
       .string()
       .trim()
-      .min(3, 'Username must be at least 3 characters long')
-      .max(20, 'Username must be at most 20 characters long')
-      .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+      .min(3, MESSAGES.VALIDATION.USERNAME_MIN_LENGTH)
+      .max(20, MESSAGES.VALIDATION.USERNAME_MAX_LENGTH)
+      .regex(/^[a-zA-Z0-9_]+$/, MESSAGES.VALIDATION.USERNAME_REGEX),
     
     email: z
       .string()
       .trim()
-      .email('Invalid email address')
+      .email(MESSAGES.VALIDATION.INVALID_EMAIL)
       .transform((val) => val.toLowerCase()), 
 
     password: z
       .string()
-      .min(6, 'Password must be at least 6 characters long')
-      .max(20, 'Password must be at most 20 characters long'),
+      .min(6, MESSAGES.VALIDATION.PASSWORD_MIN_LENGTH)
+      .max(20, MESSAGES.VALIDATION.PASSWORD_MAX_LENGTH),
 
     name: z.string()
-    .min(3,'Name Must Be Longer Than 3 Characters')
-    .max(30,'Name Must Be Less Than 30 Characters')
+    .min(3,MESSAGES.VALIDATION.NAME_MIN_LENGTH)
+    .max(30,MESSAGES.VALIDATION.NAME_MAX_LENGTH)
     .trim()
     .optional(),
   }),
@@ -33,11 +34,11 @@ export const loginSchema = z.object({
     email: z
       .string()
       .trim()
-      .email('Invalid email address')
+      .email(MESSAGES.VALIDATION.INVALID_EMAIL)
       .transform((val) => val.toLowerCase()),
 
     password: z
       .string()
-      .min(1, 'Password is required'),
+      .min(1, MESSAGES.VALIDATION.PASSWORD_REQUIRED),
   }),
 });

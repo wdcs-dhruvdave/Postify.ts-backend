@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
+import { ActivityType, CONFIG } from '../constants/constants';
 
 interface UserActivityLogAttributes {
   id: number;
@@ -37,16 +38,7 @@ UserActivityLog.init(
       allowNull: false,
     },
     activityType: {
-      type: DataTypes.ENUM(
-        'post_like',
-        'post_dislike',
-        'post_view',
-        'post_share',
-        'profile_view',
-        'comment',
-        'comment_like',
-        'follow'
-      ),
+      type: DataTypes.ENUM(...Object.values(ActivityType)),
       allowNull: false,
     },
     targetId: {
@@ -64,7 +56,7 @@ UserActivityLog.init(
   },
   {
     sequelize,
-    tableName: 'user_activity_logs',
+    tableName: CONFIG.TABLE_NAMES.USER_ACTIVITY_LOGS,
     underscored: true,
     timestamps: true,
     updatedAt: false, 

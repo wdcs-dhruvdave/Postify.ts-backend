@@ -4,13 +4,14 @@ import commentRouter from './comment.routes';
 import { Router } from 'express';
 import userRouter from './user.routes';
 import notificationRouter from './notification.routes';
+import { ROUTES } from '../constants/constants';
 
 const indexRouter = Router();
 
-indexRouter.use('/auth', authRouter);
-indexRouter.use('/posts', postRouter);
+indexRouter.use(ROUTES.AUTH.BASE, authRouter);
+indexRouter.use(ROUTES.POSTS.BASE, postRouter);
 indexRouter.use('/posts/:postId/comments', commentRouter);
-indexRouter.use('/users', userRouter);
-indexRouter.use('/notifications', notificationRouter);
+indexRouter.use(ROUTES.USERS.BASE, userRouter);
+indexRouter.use(ROUTES.NOTIFICATIONS.BASE, notificationRouter);
 
 export default indexRouter;
