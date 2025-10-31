@@ -46,7 +46,21 @@ export const getCommentsForPostFromDB = async (
   const totalPages = Math.ceil(count / limit);
   const hasNextPage = page < totalPages;
 
-  return comments.map((comment) => comment.toJSON() as CommentType);
+  return comments.map((comment) => {
+    const commentData = comment.toJSON();
+    return {
+      id: commentData.id,
+      content: commentData.content_text,
+      authorId: commentData.user_id,
+      postId: commentData.post_id,
+      parentCommentId: commentData.parent_id,
+      createdAt: commentData.createdAt,
+      updatedAt: commentData.updatedAt,
+      isDeleted: false,
+      likesCount: 0, // TODO: Implement likes count
+      repliesCount: 0, // TODO: Implement replies count
+    } as CommentType;
+  });
 };
 
 export const createCommentInDB = async (
@@ -82,5 +96,17 @@ export const createCommentInDB = async (
     throw new Error("Comment creation failed");
   }
 
-  return createdComment.toJSON() as CommentType;
+  const commentData = createdComment.toJSON();
+  return {
+    id: commentData.id,
+    content: commentData.content_text,
+    authorId: commentData.user_id,
+    postId: commentData.post_id,
+    parentCommentId: commentData.parent_id,
+    createdAt: commentData.createdAt,
+    updatedAt: commentData.updatedAt,
+    isDeleted: false,
+    likesCount: 0, // TODO: Implement likes count
+    repliesCount: 0, // TODO: Implement replies count
+  } as CommentType;
 };

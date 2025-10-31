@@ -13,11 +13,12 @@ export interface UserAttributes {
   bio: string | null;
   role: 'user' | 'admin';
   is_private: boolean;
+  fcm_tokens: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'name' | 'avatar_url' | 'bio' | 'role' | 'is_private' | 'createdAt' | 'updatedAt'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'name' | 'avatar_url' | 'bio' | 'role' | 'is_private' | 'fcm_tokens' | 'createdAt' | 'updatedAt'> {}
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: string;
@@ -29,6 +30,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public bio!: string | null;
   public role!: 'user' | 'admin';
   public is_private!: boolean;
+  public fcm_tokens!: string[];
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -79,6 +81,11 @@ User.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    fcm_tokens: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
     },
     createdAt: {
       type: DataTypes.DATE,

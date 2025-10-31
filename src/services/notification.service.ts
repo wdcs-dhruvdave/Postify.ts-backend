@@ -16,14 +16,18 @@ export const createNotification = async (
 
   if (!sender) return;
 
-  await axios.post("http://localhost:3003/notifications", {
-    recipient: recipientId,
-    sender: {
-      id: sender.id,
-      username: sender.username,
-      avatar_url: sender.avatar_url,
-    },
-    type,
-    post: postId,
-  });
+  try {
+    // Send to FCM-enabled notification service with correct format
+    await axios.post("http://localhost:3003/notifications", {
+      recipientId: recipientId,
+      senderId: senderId,
+      type,
+      postId: postId,
+    });
+    
+    console.log(`Notification sent: ${type} from ${senderId} to ${recipientId}`);
+  } catch (error: unknown) {
+    const notificationError = error as Error;
+    console.error('Error sending notification:', notificationError.message);
+  }
 };

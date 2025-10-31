@@ -87,6 +87,25 @@ export const CONFIG = {
     LOG_ACTIVITY: 'log_activity',
   },
   ONE_MINUTE_IN_MS: 10 * 60 * 1000,
+  
+  FCM: {
+    WEBPUSH: {
+      ICON: '/favicon.ico',
+      BADGE: '/favicon.ico',
+      REQUIRE_INTERACTION: true,
+    },
+    DEFAULTS: {
+      FALLBACK_URL: '/',
+      TEST_TITLE: 'Test Notification',
+      TEST_BODY: 'Your notifications are working correctly.',
+      DRY_RUN: true,
+    },
+    ERROR_CODES: {
+      INVALID_REGISTRATION_TOKEN: 'messaging/invalid-registration-token',
+      REGISTRATION_TOKEN_NOT_REGISTERED: 'messaging/registration-token-not-registered',
+    },
+    TIMEOUT: 5000,
+  },
 };
 
 export const ENV = {
